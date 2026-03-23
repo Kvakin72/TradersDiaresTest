@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Дневник Трейдера</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -1282,7 +1283,10 @@ function openModal(t) {
         </span>
       </div>
       <div class="tv-wrap" id="tv-frame-wrap">
-        ${buildTvIframe(t.symbol, '30')}
+        <div style="height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
+          <div class="spinner"></div>
+          <div style="font-size:11px;color:var(--text3)">Загружаем свечи…</div>
+        </div>
       </div>
       <a class="tv-open-btn" id="tv-open-link" href="${buildTvUrl(t.symbol, '30')}" target="_blank">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1360,43 +1364,189 @@ function openModal(t) {
       document.querySelectorAll('.tv-int-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _tvInterval = btn.dataset.int;
-      document.getElementById('tv-frame-wrap').innerHTML = buildTvIframe(t.symbol, _tvInterval);
       document.getElementById('tv-open-link').href = buildTvUrl(t.symbol, _tvInterval);
+      drawChart(t, _tvInterval);
     });
   });
 
   document.getElementById('modal').classList.add('open');
-}
-
-function buildTvIframe(symbol, interval) {
-  const url = `https://www.tradingview.com/widgetembed/?` + new URLSearchParams({
-    symbol:           `BYBIT:${symbol}`,
-    interval:         interval,
-    theme:            'dark',
-    style:            '1',
-    timezone:         'UTC',
-    hide_side_toolbar:'1',
-    allow_symbol_change: '0',
-    save_image:       '0',
-    hideideas:        '1',
-    hide_top_toolbar: '0',
-    withdateranges:   '0',
-    backgroundColor:  '#0d1117',
-    gridColor:        '#1e2535',
-  }).toString();
-  return `<iframe
-    src="${url}"
-    width="100%"
-    height="320"
-    frameborder="0"
-    allowtransparency="true"
-    scrolling="no"
-    style="display:block;border-radius:8px"
-  ></iframe>`;
+  // Draw chart immediately after modal opens
+  setTimeout(() => drawChart(t, _tvInterval), 50);
 }
 
 function buildTvUrl(symbol, interval) {
   return `https://www.tradingview.com/chart/?symbol=BYBIT:${symbol}&interval=${interval}`;
+}
+
+/* ─── Fetch Bybit Klines ─── */
+async function fetchKlines(symbol, interval, entryTs, exitTs) {
+  // Add padding around trade: 20 candles before entry, 20 after exit
+  const intervalMs = intervalToMs(interval);
+  const from = Math.floor((entryTs - intervalMs * 25) / 1000);
+  const to   = Math.floor((exitTs  + intervalMs * 25) / 1000);
+  const limit = Math.min(Math.ceil((to - from) / (intervalMs / 1000)) + 10, 200);
+
+  const p = {
+    category: 'linear',
+    symbol:   symbol,
+    interval: interval,
+    start:    (from * 1000).toString(),
+    end:      (to   * 1000).toString(),
+    limit:    limit.toString(),
+  };
+  const r = await bybitGet('/v5/market/kline', p);
+  // Bybit returns [startTime, open, high, low, close, volume, turnover]
+  return (r.list || []).map(c => ({
+    time:  Math.floor(parseInt(c[0]) / 1000),
+    open:  parseFloat(c[1]),
+    high:  parseFloat(c[2]),
+    low:   parseFloat(c[3]),
+    close: parseFloat(c[4]),
+    volume: parseFloat(c[5]),
+  })).sort((a, b) => a.time - b.time);
+}
+
+function intervalToMs(iv) {
+  const map = { '1':60000,'3':180000,'5':300000,'15':900000,'30':1800000,
+                '60':3600000,'120':7200000,'240':14400000,'360':21600000,
+                '720':43200000,'D':86400000,'W':604800000 };
+  return map[iv] || 1800000;
+}
+
+/* ─── Draw Chart with Lightweight Charts ─── */
+async function drawChart(trade, interval) {
+  const wrap = document.getElementById('tv-frame-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = `<div style="height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
+    <div class="spinner"></div>
+    <div style="font-size:11px;color:var(--text3)">Загружаем свечи…</div>
+  </div>`;
+
+  const entryTs = parseInt(trade.createdTime);
+  const exitTs  = parseInt(trade.updatedTime);
+
+  try {
+    const klines = await fetchKlines(trade.symbol, interval, entryTs, exitTs);
+    if (!klines.length) {
+      wrap.innerHTML = `<div style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px">Нет данных свечей</div>`;
+      return;
+    }
+
+    wrap.innerHTML = `<div id="lw-chart" style="height:320px;border-radius:8px;overflow:hidden"></div>`;
+
+    const LWC = window.LightweightCharts;
+    const chart = LWC.createChart(document.getElementById('lw-chart'), {
+      width:  wrap.clientWidth || 340,
+      height: 320,
+      layout: {
+        background:   { color: '#0d1117' },
+        textColor:    '#8b96b0',
+        fontSize:     11,
+        fontFamily:   'JetBrains Mono, monospace',
+      },
+      grid: {
+        vertLines: { color: '#1e2535' },
+        horzLines: { color: '#1e2535' },
+      },
+      crosshair: {
+        mode: LWC.CrosshairMode.Normal,
+      },
+      rightPriceScale: {
+        borderColor: '#1e2d45',
+      },
+      timeScale: {
+        borderColor:     '#1e2d45',
+        timeVisible:     true,
+        secondsVisible:  false,
+      },
+      handleScroll:   true,
+      handleScale:    true,
+    });
+
+    const candleSeries = chart.addCandlestickSeries({
+      upColor:          '#22c55e',
+      downColor:        '#ef4444',
+      borderUpColor:    '#22c55e',
+      borderDownColor:  '#ef4444',
+      wickUpColor:      '#22c55e',
+      wickDownColor:    '#ef4444',
+    });
+
+    candleSeries.setData(klines);
+
+    // ─── Entry marker ───
+    const entryTimeSec = Math.floor(entryTs / 1000);
+    const exitTimeSec  = Math.floor(exitTs  / 1000);
+    const ivMs = intervalToMs(interval);
+
+    // Snap to nearest candle open time
+    const snapToCandle = (ts) => {
+      const nearest = klines.reduce((best, c) =>
+        Math.abs(c.time - ts) < Math.abs(best.time - ts) ? c : best, klines[0]);
+      return nearest;
+    };
+
+    const entryCandle = snapToCandle(entryTimeSec);
+    const exitCandle  = snapToCandle(exitTimeSec);
+    const isLong      = trade.side === 'Buy';
+    const entryPrice  = parseFloat(trade.avgEntryPrice) || entryCandle.low;
+    const exitPrice   = parseFloat(trade.avgExitPrice)  || exitCandle.high;
+
+    candleSeries.setMarkers([
+      {
+        time:     entryCandle.time,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color:    '#22c55e',
+        shape:    isLong ? 'arrowUp' : 'arrowDown',
+        text:     `Вход $${entryPrice.toFixed(5)}`,
+        size:     2,
+      },
+      {
+        time:     exitCandle.time,
+        position: isLong ? 'aboveBar' : 'belowBar',
+        color:    '#ef4444',
+        shape:    isLong ? 'arrowDown' : 'arrowUp',
+        text:     `Выход $${exitPrice.toFixed(5)}`,
+        size:     2,
+      },
+    ]);
+
+    // Add entry price line
+    candleSeries.createPriceLine({
+      price:     entryPrice,
+      color:     '#22c55e',
+      lineWidth: 1,
+      lineStyle: LWC.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: 'Вход',
+    });
+    // Add exit price line
+    candleSeries.createPriceLine({
+      price:     exitPrice,
+      color:     '#ef4444',
+      lineWidth: 1,
+      lineStyle: LWC.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: 'Выход',
+    });
+
+    // Fit visible range around trade
+    chart.timeScale().setVisibleRange({
+      from: Math.floor(entryTimeSec - ivMs * 10 / 1000),
+      to:   Math.floor(exitTimeSec  + ivMs * 10 / 1000),
+    });
+
+    // Resize observer
+    const ro = new ResizeObserver(() => {
+      chart.applyOptions({ width: wrap.clientWidth });
+    });
+    ro.observe(wrap);
+
+  } catch (err) {
+    wrap.innerHTML = `<div style="height:160px;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:12px;padding:16px;text-align:center">
+      Ошибка загрузки: ${err.message}
+    </div>`;
+  }
 }
 
 async function loadExecs(symbol, t) {
