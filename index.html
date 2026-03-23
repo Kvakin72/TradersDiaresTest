@@ -742,21 +742,35 @@ async function bybitGet(path, params = {}) {
 }
 
 async function fetchClosedPnl(days) {
-  const end   = Date.now();
-  const start = end - days * 86400000;
-  let list = [], cursor = '';
-  for (let i = 0; i < 10; i++) {
-    const p = {
-      category:  'linear',
-      startTime: start.toString(),
-      endTime:   end.toString(),
-      limit:     '200',
-    };
-    if (cursor) p.cursor = cursor;
-    const r = await bybitGet('/v5/position/closed-pnl', p);
-    list = list.concat(r.list || []);
-    cursor = r.nextPageCursor || '';
-    if (!cursor || (r.list||[]).length < 200) break;
+  const CHUNK = 6 * 86400000; // 6 days per chunk (safe margin under 7-day limit)
+  const totalEnd   = Date.now();
+  const totalStart = totalEnd - days * 86400000;
+
+  // Build list of [start, end] chunks
+  const chunks = [];
+  let chunkEnd = totalEnd;
+  while (chunkEnd > totalStart) {
+    const chunkStart = Math.max(chunkEnd - CHUNK, totalStart);
+    chunks.push([chunkStart, chunkEnd]);
+    chunkEnd = chunkStart;
+  }
+
+  let list = [];
+  for (const [start, end] of chunks) {
+    let cursor = '';
+    for (let i = 0; i < 10; i++) {
+      const p = {
+        category:  'linear',
+        startTime: start.toString(),
+        endTime:   end.toString(),
+        limit:     '200',
+      };
+      if (cursor) p.cursor = cursor;
+      const r = await bybitGet('/v5/position/closed-pnl', p);
+      list = list.concat(r.list || []);
+      cursor = r.nextPageCursor || '';
+      if (!cursor || (r.list||[]).length < 200) break;
+    }
   }
   return list;
 }
