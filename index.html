@@ -550,6 +550,94 @@
       color: var(--text2);
     }
 
+    /* ─── Modal Tabs ─── */
+    .modal-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg3);
+      border-radius: var(--r2);
+      padding: 3px;
+      margin-bottom: 14px;
+    }
+    .modal-tab {
+      flex: 1;
+      padding: 7px;
+      border: none;
+      background: none;
+      border-radius: 6px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .modal-tab.active {
+      background: var(--bg2);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ─── TradingView Chart ─── */
+    .tv-wrap {
+      border-radius: var(--r2);
+      overflow: hidden;
+      background: var(--bg3);
+      position: relative;
+    }
+    .tv-intervals {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .tv-int-btn {
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tv-int-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tv-open-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r2);
+      color: var(--accent2);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 8px;
+      text-decoration: none;
+      font-family: var(--sans);
+    }
+    .tv-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--bg3);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+
     /* ─── Error Toast ─── */
     .toast {
       position: fixed;
@@ -1143,13 +1231,19 @@ function renderTradeRow(t) {
 /* ═══════════════════════════════════════
    TRADE DETAIL MODAL
 ═══════════════════════════════════════ */
+let _modalTrade = null;
+let _tvInterval = '30';
+
 function openModal(t) {
   if (!t) return;
-  const pnl    = parseFloat(t.closedPnl) || 0;
-  const side   = t.side === 'Buy' ? 'Long' : 'Short';
-  const sideDir= t.side === 'Buy' ? 'long' : 'short';
-  const dur    = parseInt(t.updatedTime) - parseInt(t.createdTime);
-  const pnlPct = t.cumEntryValue
+  _modalTrade = t;
+  _tvInterval = '30';
+
+  const pnl     = parseFloat(t.closedPnl) || 0;
+  const side    = t.side === 'Buy' ? 'Long' : 'Short';
+  const sideDir = t.side === 'Buy' ? 'long' : 'short';
+  const dur     = parseInt(t.updatedTime) - parseInt(t.createdTime);
+  const pnlPct  = t.cumEntryValue
     ? (pnl / parseFloat(t.cumEntryValue) * 100).toFixed(2) : '0.00';
   const entryDate = new Date(parseInt(t.createdTime));
   const exitDate  = new Date(parseInt(t.updatedTime));
@@ -1161,54 +1255,148 @@ function openModal(t) {
     </div>
     <div class="modal-pnl ${pnlClass(pnl)}">${fmtPnl(pnl)} <span style="font-size:16px;color:var(--text2)">(${pnl>=0?'+':''}${pnlPct}%)</span></div>
 
-    <div class="detail-grid">
-      <div class="detail-item">
-        <div class="detail-label">Размер позиции</div>
-        <div class="detail-val">${parseFloat(t.closedSize).toFixed(4)}</div>
+    <!-- Tabs -->
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab="chart">📈 График</button>
+      <button class="modal-tab" data-tab="details">📋 Детали</button>
+      <button class="modal-tab" data-tab="execs">⚡ Сделки</button>
+    </div>
+
+    <!-- TAB: Chart -->
+    <div class="tab-pane active" id="tab-chart">
+      <div class="tv-intervals">
+        ${[['1','1м'],['5','5м'],['15','15м'],['30','30м'],['60','1ч'],['240','4ч'],['D','1д']].map(([val,lbl]) =>
+          `<button class="tv-int-btn${val==='30'?' active':''}" data-int="${val}">${lbl}</button>`
+        ).join('')}
       </div>
-      <div class="detail-item">
-        <div class="detail-label">Длительность</div>
-        <div class="detail-val">${fmtDur(dur)}</div>
+      <div class="tv-info-row">
+        <span style="color:var(--text2)">Вход</span>
+        <span style="color:var(--green);font-family:var(--mono);font-weight:600">
+          ▲ $${parseFloat(t.avgEntryPrice||0).toFixed(6)} &nbsp; ${fmtDateTime(entryDate)}
+        </span>
       </div>
-      <div class="detail-item">
-        <div class="detail-label">Вход (avg)</div>
-        <div class="detail-val">$${parseFloat(t.avgEntryPrice||0).toFixed(6)}</div>
+      <div class="tv-info-row">
+        <span style="color:var(--text2)">Выход</span>
+        <span style="color:var(--red);font-family:var(--mono);font-weight:600">
+          ▼ $${parseFloat(t.avgExitPrice||0).toFixed(6)} &nbsp; ${fmtDateTime(exitDate)}
+        </span>
       </div>
-      <div class="detail-item">
-        <div class="detail-label">Выход (avg)</div>
-        <div class="detail-val">$${parseFloat(t.avgExitPrice||0).toFixed(6)}</div>
+      <div class="tv-wrap" id="tv-frame-wrap">
+        ${buildTvIframe(t.symbol, '30')}
       </div>
-      <div class="detail-item">
-        <div class="detail-label">Открытие</div>
-        <div class="detail-val" style="font-size:11px">${fmtDateTime(entryDate)}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Закрытие</div>
-        <div class="detail-val" style="font-size:11px">${fmtDateTime(exitDate)}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Объём входа</div>
-        <div class="detail-val">$${parseFloat(t.cumEntryValue||0).toFixed(2)}</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Объём выхода</div>
-        <div class="detail-val">$${parseFloat(t.cumExitValue||0).toFixed(2)}</div>
+      <a class="tv-open-btn" id="tv-open-link" href="${buildTvUrl(t.symbol, '30')}" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Открыть в TradingView
+      </a>
+    </div>
+
+    <!-- TAB: Details -->
+    <div class="tab-pane" id="tab-details">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Размер позиции</div>
+          <div class="detail-val">${parseFloat(t.closedSize).toFixed(4)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Длительность</div>
+          <div class="detail-val">${fmtDur(dur)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Вход (avg)</div>
+          <div class="detail-val">$${parseFloat(t.avgEntryPrice||0).toFixed(6)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Выход (avg)</div>
+          <div class="detail-val">$${parseFloat(t.avgExitPrice||0).toFixed(6)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Открытие</div>
+          <div class="detail-val" style="font-size:11px">${fmtDateTime(entryDate)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Закрытие</div>
+          <div class="detail-val" style="font-size:11px">${fmtDateTime(exitDate)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Объём входа</div>
+          <div class="detail-val">$${parseFloat(t.cumEntryValue||0).toFixed(2)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Объём выхода</div>
+          <div class="detail-val">$${parseFloat(t.cumExitValue||0).toFixed(2)}</div>
+        </div>
       </div>
     </div>
 
-    <div class="sec-header" style="margin-bottom:6px">
-      <div class="sec-title">Executions</div>
-    </div>
-    <div id="exec-wrap" style="text-align:center;padding:12px;color:var(--text3);font-size:12px">
-      <div class="spinner" style="margin:0 auto 8px"></div>Загружаем…
+    <!-- TAB: Executions -->
+    <div class="tab-pane" id="tab-execs">
+      <div id="exec-wrap" style="text-align:center;padding:20px;color:var(--text3);font-size:12px">
+        <div class="spinner" style="margin:0 auto 8px"></div>Загружаем…
+      </div>
     </div>
 
     <br>
     <button class="btn secondary" onclick="closeModal()">Закрыть</button>
   `;
 
+  // Tab switching
+  document.querySelectorAll('.modal-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.modal-tab').forEach(t2 => t2.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      // Load executions lazily
+      if (tab.dataset.tab === 'execs') loadExecs(t.symbol, t);
+    });
+  });
+
+  // Interval buttons
+  document.querySelectorAll('.tv-int-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tv-int-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _tvInterval = btn.dataset.int;
+      document.getElementById('tv-frame-wrap').innerHTML = buildTvIframe(t.symbol, _tvInterval);
+      document.getElementById('tv-open-link').href = buildTvUrl(t.symbol, _tvInterval);
+    });
+  });
+
   document.getElementById('modal').classList.add('open');
-  loadExecs(t.symbol, t);
+}
+
+function buildTvIframe(symbol, interval) {
+  const url = `https://www.tradingview.com/widgetembed/?` + new URLSearchParams({
+    symbol:           `BYBIT:${symbol}`,
+    interval:         interval,
+    theme:            'dark',
+    style:            '1',
+    timezone:         'UTC',
+    hide_side_toolbar:'1',
+    allow_symbol_change: '0',
+    save_image:       '0',
+    hideideas:        '1',
+    hide_top_toolbar: '0',
+    withdateranges:   '0',
+    backgroundColor:  '#0d1117',
+    gridColor:        '#1e2535',
+  }).toString();
+  return `<iframe
+    src="${url}"
+    width="100%"
+    height="320"
+    frameborder="0"
+    allowtransparency="true"
+    scrolling="no"
+    style="display:block;border-radius:8px"
+  ></iframe>`;
+}
+
+function buildTvUrl(symbol, interval) {
+  return `https://www.tradingview.com/chart/?symbol=BYBIT:${symbol}&interval=${interval}`;
 }
 
 async function loadExecs(symbol, t) {
