@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Дневник Трейдера</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #0d1117;
+      --bg2:      #161b27;
+      --bg3:      #1e2535;
+      --bg4:      #252d3d;
+      --accent:   #3b82f6;
+      --accent2:  #60a5fa;
+      --green:    #22c55e;
+      --green-dim:#16a34a33;
+      --red:      #ef4444;
+      --red-dim:  #dc262633;
+      --yellow:   #f59e0b;
+      --text:     #e2e8f0;
+      --text2:    #8b96b0;
+      --text3:    #4f5a72;
+      --border:   #1e2d45;
+      --border2:  #263047;
+      --shadow:   0 4px 24px rgba(0,0,0,.45);
+      --mono:     'JetBrains Mono', monospace;
+      --sans:     'Sora', sans-serif;
+      --r:        12px;
+      --r2:       8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ─── Layout ─── */
+    #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+    .header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 52px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .header-sub {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 1px;
+    }
+    .header-logo {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .content::-webkit-scrollbar { width: 0; }
+
+    .bottom-nav {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 4px;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      cursor: pointer;
+      transition: color .2s;
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .nav-btn.active { color: var(--accent2); }
+    .nav-btn svg { width: 20px; height: 20px; }
+
+    /* ─── Screens ─── */
+    .screen { display: none; padding: 16px; padding-bottom: 24px; }
+    .screen.active { display: block; }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card-sm { padding: 12px; }
+
+    /* ─── Stats Grid ─── */
+    .stats-hero {
+      background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 20px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stats-hero::before {
+      content: '';
+      position: absolute;
+      top: -30px; right: -30px;
+      width: 120px; height: 120px;
+      background: var(--accent);
+      opacity: .05;
+      border-radius: 50%;
+    }
+    .hero-pnl {
+      font-family: var(--mono);
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .hero-pnl.pos { color: var(--green); }
+    .hero-pnl.neg { color: var(--red); }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--green-dim);
+      color: var(--green);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .hero-badge.neg { background: var(--red-dim); color: var(--red); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .stat-item {
+      background: var(--bg3);
+      border-radius: var(--r2);
+      padding: 10px 12px;
+    }
+    .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .stat-val {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .stat-val.green { color: var(--green); }
+    .stat-val.red { color: var(--red); }
+
+    /* ─── Long/Short Split ─── */
+    .ls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .ls-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+    }
+    .ls-title { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
+    .ls-count {
+      display: inline-block;
+      background: var(--bg4);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      margin-left: 4px;
+    }
+    .ls-pnl {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .ls-bar-row { display: flex; gap: 2px; margin-top: 8px; }
+    .ls-bar-green { height: 5px; background: var(--green); border-radius: 3px; }
+    .ls-bar-red   { height: 5px; background: var(--red);   border-radius: 3px; }
+
+    /* ─── Section Header ─── */
+    .sec-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .sec-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+
+    /* ─── Symbol Table ─── */
+    .sym-list { display: flex; flex-direction: column; gap: 2px; }
+    .sym-row {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r2);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sym-name {
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      min-width: 90px;
+    }
+    .sym-count {
+      background: var(--bg4);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text2);
+    }
+    .sym-bars { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .sym-bar-row { display: flex; gap: 2px; }
+    .sym-pnl {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: right;
+      min-width: 60px;
+    }
+
+    /* ─── Trades List ─── */
+    .week-group { margin-bottom: 8px; }
+    .week-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg3);
+      border-radius: var(--r2);
+      cursor: pointer;
+      margin-bottom: 4px;
+      border: 1px solid var(--border);
+      user-select: none;
+    }
+    .week-label { font-size: 12px; font-weight: 600; color: var(--text2); }
+    .week-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+    .week-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
+    .week-chevron { color: var(--text3); transition: transform .2s; }
+    .week-chevron.open { transform: rotate(180deg); }
+
+    .day-group { margin-bottom: 4px; }
+    .day-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--bg2);
+      border-radius: var(--r2);
+      cursor: pointer;
+      margin-bottom: 2px;
+      border: 1px solid var(--border);
+    }
+    .day-label { font-size: 11px; color: var(--text2); font-weight: 500; }
+    .day-pnl { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+    .trade-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 2px;
+      cursor: pointer;
+      transition: background .15s;
+      gap: 8px;
+    }
+    .trade-row:active { background: var(--bg3); }
+    .trade-sym { font-family: var(--mono); font-size: 12px; font-weight: 600; flex: 1; }
+    .trade-dir {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--mono);
+    }
+    .trade-dir.short { color: var(--red);   background: var(--red-dim); }
+    .trade-dir.long  { color: var(--green); background: var(--green-dim); }
+    .trade-dur { font-size: 10px; color: var(--text3); min-width: 50px; }
+    .trade-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right; }
+    .trade-pct { font-size: 10px; font-family: var(--mono); text-align: right; }
+
+    /* ─── Trade Detail Modal ─── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--bg2);
+      border-radius: 18px 18px 0 0;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 20px 16px;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    .modal-handle {
+      width: 36px; height: 4px;
+      background: var(--border2);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .modal-sym {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .modal-pnl {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .detail-item { background: var(--bg3); border-radius: var(--r2); padding: 10px 12px; }
+    .detail-label { font-size: 10px; color: var(--text2); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .06em; }
+    .detail-val { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+
+    .exec-table { width: 100%; border-collapse: collapse; }
+    .exec-table th {
+      text-align: left;
+      font-size: 10px;
+      color: var(--text2);
+      font-weight: 500;
+      padding: 4px 6px;
+      text-transform: uppercase;
+    }
+    .exec-table td {
+      padding: 6px 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      border-top: 1px solid var(--border);
+    }
+    .exec-buy  { color: var(--green); font-weight: 600; }
+    .exec-sell { color: var(--red);   font-weight: 600; }
+
+    /* ─── Settings ─── */
+    .settings-section { margin-bottom: 20px; }
+    .settings-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 8px;
+    }
+    .field { margin-bottom: 10px; }
+    .field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+    .field input, .field select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r2);
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--text3); }
+    .field select { appearance: none; }
+
+    .btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--r2);
+      padding: 12px;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:active { opacity: .85; transform: scale(.99); }
+    .btn.secondary {
+      background: var(--bg3);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn.danger { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-dim); }
+
+    /* ─── Date Filter ─── */
+    .date-filter {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .date-filter::-webkit-scrollbar { display: none; }
+    .df-btn {
+      flex-shrink: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .df-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ─── Loading / Empty ─── */
+    .loading-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 60px 20px;
+      gap: 16px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--text2); }
+
+    .empty-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 60px 20px; gap: 12px;
+    }
+    .empty-icon { font-size: 40px; }
+    .empty-text { font-size: 14px; color: var(--text2); text-align: center; }
+
+    /* ─── Notice ─── */
+    .notice {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-left: 3px solid var(--yellow);
+      border-radius: var(--r2);
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--text2);
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+
+    /* ─── Refresh btn ─── */
+    .icon-btn {
+      width: 32px; height: 32px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all .15s;
+    }
+    .icon-btn:active { background: var(--bg4); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .neu { color: var(--text); }
+
+    /* ─── Chip ─── */
+    .chip {
+      display: inline-flex; align-items: center;
+      background: var(--bg4);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--text2);
+    }
+
+    /* ─── Error Toast ─── */
+    .toast {
+      position: fixed;
+      bottom: 80px; left: 16px; right: 16px;
+      background: var(--red-dim);
+      border: 1px solid var(--red);
+      border-radius: var(--r2);
+      padding: 12px 14px;
+      color: var(--red);
+      font-size: 13px;
+      z-index: 200;
+      display: none;
+      animation: fadeIn .3s ease;
+    }
+    .toast.show { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .success-toast {
+      background: var(--green-dim);
+      border-color: var(--green);
+      color: var(--green);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo">TD</div>
+      <div>
+        <div class="header-title">Дневник Трейдера</div>
+        <div class="header-sub" id="hdr-sub">Testnet Bybit</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="icon-btn" id="btn-refresh" title="Обновить" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="content">
+
+    <!-- Dashboard Screen -->
+    <div class="screen active" id="screen-dash">
+      <div id="dash-inner"></div>
+    </div>
+
+    <!-- Trades Screen -->
+    <div class="screen" id="screen-trades">
+      <div id="trades-inner"></div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div class="screen" id="screen-settings">
+      <div class="settings-section">
+        <div class="settings-label">Подключение к Bybit Testnet</div>
+        <div class="notice">
+          Создайте API ключи на <strong>testnet.bybit.com</strong> → Профиль → API Management.<br>
+          Необходимы права: <strong>Read-Only</strong> для позиций и трейдов.
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="text" id="inp-key" placeholder="Вставьте API Key" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>API Secret</label>
+          <input type="password" id="inp-secret" placeholder="Вставьте API Secret" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Тип аккаунта</label>
+          <select id="inp-acc">
+            <option value="UNIFIED">UNIFIED (рекомендуется)</option>
+            <option value="CONTRACT">CONTRACT (Legacy)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn" id="btn-save">Сохранить и подключить</button>
+      <br><br>
+      <button class="btn secondary" id="btn-clear">Очистить данные</button>
+      <br><br>
+      <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.7">
+        Ключи хранятся только на вашем устройстве.<br>
+        Приложение работает только с Bybit Testnet.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-screen="dash">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      Дашборд
+    </button>
+    <button class="nav-btn" data-screen="trades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      Трейды
+    </button>
+    <button class="nav-btn" data-screen="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+      </svg>
+      Настройки
+    </button>
+  </div>
+</div>
+
+<!-- Trade Detail Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-sheet" id="modal-content">
+    <div class="modal-handle"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   TELEGRAM MINI APP INIT
+═══════════════════════════════════════ */
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#161b27');
+  tg.setBackgroundColor('#0d1117');
+}
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+const state = {
+  apiKey:    localStorage.getItem('td_key')    || '',
+  apiSecret: localStorage.getItem('td_secret') || '',
+  accType:   localStorage.getItem('td_acc')    || 'UNIFIED',
+  screen:    'dash',
+  days:      30,
+  loading:   false,
+  data:      null,   // processed data
+  rawPnl:    [],     // raw closed pnl list
+  execMap:   {},     // symbol -> executions
+};
+
+/* ═══════════════════════════════════════
+   BYBIT TESTNET CLIENT
+═══════════════════════════════════════ */
+const BASE = 'https://api-testnet.bybit.com';
+
+async function hmac(secret, msg) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret),
+    {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(msg));
+  return [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function bybitGet(path, params = {}) {
+  const ts  = Date.now().toString();
+  const rw  = '5000';
+  const qs  = new URLSearchParams(params).toString();
+  const pre = ts + state.apiKey + rw + qs;
+  const sig = await hmac(state.apiSecret, pre);
+  const res = await fetch(`${BASE}${path}?${qs}`, {
+    headers: {
+      'X-BAPI-API-KEY':       state.apiKey,
+      'X-BAPI-SIGN':          sig,
+      'X-BAPI-TIMESTAMP':     ts,
+      'X-BAPI-RECV-WINDOW':   rw,
+      'X-BAPI-SIGN-TYPE':     '2',
+    }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.retCode !== 0) throw new Error(json.retMsg || 'API Error');
+  return json.result;
+}
+
+async function fetchClosedPnl(days) {
+  const end   = Date.now();
+  const start = end - days * 86400000;
+  let list = [], cursor = '';
+  for (let i = 0; i < 10; i++) {
+    const p = {
+      category:  'linear',
+      startTime: start.toString(),
+      endTime:   end.toString(),
+      limit:     '200',
+    };
+    if (cursor) p.cursor = cursor;
+    const r = await bybitGet('/v5/position/closed-pnl', p);
+    list = list.concat(r.list || []);
+    cursor = r.nextPageCursor || '';
+    if (!cursor || (r.list||[]).length < 200) break;
+  }
+  return list;
+}
+
+async function fetchExecutions(symbol, days) {
+  const end   = Date.now();
+  const start = end - days * 86400000;
+  const p = {
+    category:  'linear',
+    symbol:    symbol,
+    startTime: start.toString(),
+    endTime:   end.toString(),
+    limit:     '100',
+  };
+  const r = await bybitGet('/v5/execution/list', p);
+  return r.list || [];
+}
+
+/* ═══════════════════════════════════════
+   DATA PROCESSING
+═══════════════════════════════════════ */
+function processData(rawList) {
+  if (!rawList.length) return null;
+
+  let totalPnl = 0, winCount = 0, totalCount = 0;
+  let longPnl = 0, shortPnl = 0, longCount = 0, shortCount = 0;
+  let longWin = 0, shortWin = 0;
+  let totalFees = 0, totalTurnover = 0;
+  const bySymbol = {};
+
+  rawList.forEach(t => {
+    const pnl = parseFloat(t.closedPnl) || 0;
+    const side = t.side; // Buy=Long, Sell=Short (side of the closing order? Actually in Bybit: side is the position side)
+    // In Bybit closed PnL: side=Buy means Long position, side=Sell means Short position
+    const qty  = parseFloat(t.closedSize) || 0;
+    const exitVal = parseFloat(t.cumExitValue) || 0;
+    const fee = (parseFloat(t.cumEntryValue) || 0) * 0.0006; // approximate
+
+    totalPnl += pnl;
+    totalCount++;
+    totalTurnover += exitVal;
+    if (pnl > 0) winCount++;
+
+    const isLong = side === 'Buy';
+    if (isLong) { longPnl += pnl; longCount++; if (pnl > 0) longWin++; }
+    else         { shortPnl += pnl; shortCount++; if (pnl > 0) shortWin++; }
+
+    const sym = t.symbol;
+    if (!bySymbol[sym]) bySymbol[sym] = { symbol: sym, pnl: 0, wins: 0, losses: 0, count: 0 };
+    bySymbol[sym].pnl   += pnl;
+    bySymbol[sym].count++;
+    if (pnl > 0) bySymbol[sym].wins++;
+    else bySymbol[sym].losses++;
+  });
+
+  // Sort trades by time desc
+  const sorted = [...rawList].sort((a, b) => parseInt(b.updatedTime) - parseInt(a.updatedTime));
+
+  // Group by week then day
+  const weeks = {};
+  sorted.forEach(t => {
+    const ts  = parseInt(t.updatedTime);
+    const d   = new Date(ts);
+    const dayKey  = toDateKey(d);
+    const weekKey = toWeekKey(d);
+    if (!weeks[weekKey]) weeks[weekKey] = { label: weekRangeLabel(d), days: {}, pnl: 0, wins: 0, total: 0, ts: ts };
+    const w = weeks[weekKey];
+    w.pnl   += parseFloat(t.closedPnl) || 0;
+    w.total++;
+    if ((parseFloat(t.closedPnl) || 0) > 0) w.wins++;
+    if (!w.days[dayKey]) w.days[dayKey] = { label: dayLabel(d), trades: [], pnl: 0, ts: ts };
+    const dd = w.days[dayKey];
+    dd.pnl += parseFloat(t.closedPnl) || 0;
+    dd.trades.push(t);
+  });
+
+  // Sort symbols by abs pnl
+  const symList = Object.values(bySymbol).sort((a,b) => Math.abs(b.pnl) - Math.abs(a.pnl));
+
+  return {
+    totalPnl, winCount, totalCount,
+    longPnl, shortPnl, longCount, shortCount, longWin, shortWin,
+    totalFees, totalTurnover,
+    winRate: totalCount ? Math.round(winCount / totalCount * 100) : 0,
+    longWinRate:  longCount  ? Math.round(longWin  / longCount  * 100) : 0,
+    shortWinRate: shortCount ? Math.round(shortWin / shortCount * 100) : 0,
+    bySymbol: symList,
+    weeks,
+  };
+}
+
+function toDateKey(d) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+function toWeekKey(d) {
+  const day = d.getDay() || 7;
+  const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+  return `${mon.getFullYear()}-${mon.getMonth()}-${mon.getDate()}`;
+}
+function weekRangeLabel(d) {
+  const day = d.getDay() || 7;
+  const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return `${fmtDate(mon)} – ${fmtDate(sun)}`;
+}
+function fmtDate(d) {
+  const months = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+function dayLabel(d) {
+  const days = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  return `${days[d.getDay()]}, ${fmtDate(d)}`;
+}
+function fmtPnl(v) {
+  const n = parseFloat(v) || 0;
+  return (n >= 0 ? '+' : '') + '$' + Math.abs(n).toFixed(2);
+}
+function fmtUsd(v) { return '$' + (parseFloat(v)||0).toFixed(2); }
+function fmtDur(ms) {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}с`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}м ${s%60}с`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}ч ${m%60}м`;
+  return `${Math.floor(h/24)}д ${h%24}ч`;
+}
+function pnlClass(v) { return parseFloat(v) >= 0 ? 'pos' : 'neg'; }
+
+/* ═══════════════════════════════════════
+   RENDER — DASHBOARD
+═══════════════════════════════════════ */
+function renderDash() {
+  const el = document.getElementById('dash-inner');
+  if (state.loading) { el.innerHTML = loadingHTML('Загружаем данные…'); return; }
+  if (!state.apiKey) { el.innerHTML = noKeyHTML(); return; }
+  if (!state.data)   { el.innerHTML = emptyHTML();  return; }
+
+  const d = state.data;
+  const pct = d.totalTurnover ? (d.totalPnl / d.totalTurnover * 100).toFixed(2) : '0.00';
+  const isPos = d.totalPnl >= 0;
+
+  // Bar widths for Long/Short
+  const lw = d.longCount + d.shortCount
+    ? Math.round(d.longWin  / (d.longCount + d.shortCount + .001) * 100) : 0;
+  const sw = d.longCount + d.shortCount
+    ? Math.round(d.shortWin / (d.longCount + d.shortCount + .001) * 100) : 0;
+
+  // Max symbol pnl for bar scaling
+  const maxPnl = Math.max(...d.bySymbol.map(s => Math.abs(s.pnl)), 1);
+
+  el.innerHTML = `
+    <div class="date-filter">
+      ${[7,14,30,60,90].map(n =>
+        `<button class="df-btn${state.days===n?' active':''}" data-days="${n}">
+          ${n === 7 ? '7д' : n === 14 ? '14д' : n === 30 ? '30д' : n === 60 ? '2м' : '3м'}
+        </button>`).join('')}
+    </div>
+
+    <div class="stats-hero">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Итого P&L</div>
+      <div class="hero-pnl ${isPos?'pos':'neg'}">${isPos?'+':''}$${Math.abs(d.totalPnl).toFixed(2)}</div>
+      <div class="hero-badge ${isPos?'':'neg'}">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+          <path d="${isPos?'M5 2l4 6H1z':'M5 8L1 2h8z'}"/>
+        </svg>
+        ${isPos?'+':''}${pct}%
+      </div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-val ${d.winRate>=50?'green':'red'}">${d.winRate}%</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Трейды</div>
+          <div class="stat-val">${d.winCount}/<span style="color:var(--red)">${d.totalCount-d.winCount}</span></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Оборот</div>
+          <div class="stat-val">$${(d.totalTurnover/1000).toFixed(1)}k</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Всего сделок</div>
+          <div class="stat-val">${d.totalCount}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ls-row">
+      <div class="ls-card">
+        <div class="ls-title">Short <span class="ls-count">${d.shortCount}</span></div>
+        <div class="ls-pnl ${pnlClass(d.shortPnl)}">${fmtPnl(d.shortPnl)}</div>
+        <div style="font-size:10px;color:var(--text3)">${d.shortWinRate}% win</div>
+        <div class="ls-bar-row">
+          <div class="ls-bar-green" style="width:${d.shortWinRate}%"></div>
+          <div class="ls-bar-red"   style="width:${100-d.shortWinRate}%"></div>
+        </div>
+      </div>
+      <div class="ls-card">
+        <div class="ls-title">Long <span class="ls-count">${d.longCount}</span></div>
+        <div class="ls-pnl ${pnlClass(d.longPnl)}">${fmtPnl(d.longPnl)}</div>
+        <div style="font-size:10px;color:var(--text3)">${d.longWinRate}% win</div>
+        <div class="ls-bar-row">
+          <div class="ls-bar-green" style="width:${d.longWinRate}%"></div>
+          <div class="ls-bar-red"   style="width:${100-d.longWinRate}%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-header">
+      <div class="sec-title">По символам</div>
+      <div class="chip">${d.bySymbol.length} монет</div>
+    </div>
+    <div class="sym-list">
+      ${d.bySymbol.slice(0,10).map(s => {
+        const isP = s.pnl >= 0;
+        const wBar = Math.round(s.wins / (s.count || 1) * 100);
+        const pBar = Math.round(Math.abs(s.pnl) / maxPnl * 100);
+        return `<div class="sym-row">
+          <div>
+            <div class="sym-name">${s.symbol.replace('USDT','')}<span style="color:var(--text3);font-size:10px">USDT</span></div>
+            <div class="chip" style="margin-top:2px">${s.count}</div>
+          </div>
+          <div class="sym-bars">
+            <div class="sym-bar-row">
+              <div style="height:5px;background:var(--green);border-radius:3px;width:${wBar}%"></div>
+              <div style="height:5px;background:var(--red);border-radius:3px;width:${100-wBar}%"></div>
+            </div>
+            <div class="sym-bar-row">
+              <div style="height:3px;background:${isP?'var(--green)':'var(--red)'};border-radius:3px;width:${pBar}%"></div>
+            </div>
+          </div>
+          <div class="sym-pnl ${pnlClass(s.pnl)}">${fmtPnl(s.pnl)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  // Date filter handlers
+  el.querySelectorAll('.df-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      state.days = parseInt(b.dataset.days);
+      loadData();
+    });
+  });
+}
+
+/* ═══════════════════════════════════════
+   RENDER — TRADES
+═══════════════════════════════════════ */
+function renderTrades() {
+  const el = document.getElementById('trades-inner');
+  if (state.loading) { el.innerHTML = loadingHTML('Загружаем трейды…'); return; }
+  if (!state.apiKey) { el.innerHTML = noKeyHTML(); return; }
+  if (!state.data)   { el.innerHTML = emptyHTML();  return; }
+
+  const weeks = state.data.weeks;
+  const wkeys = Object.keys(weeks).sort((a,b) => weeks[b].ts - weeks[a].ts);
+
+  if (!wkeys.length) { el.innerHTML = emptyHTML(); return; }
+
+  el.innerHTML = `
+    <div class="date-filter" id="t-date-filter">
+      ${[7,14,30,60,90].map(n =>
+        `<button class="df-btn${state.days===n?' active':''}" data-days="${n}">
+          ${n===7?'7д':n===14?'14д':n===30?'30д':n===60?'2м':'3м'}
+        </button>`).join('')}
+    </div>
+    <div id="weeks-container">
+      ${wkeys.map((wk, wi) => renderWeek(weeks[wk], wi===0)).join('')}
+    </div>
+  `;
+
+  el.querySelectorAll('.df-btn').forEach(b => {
+    b.addEventListener('click', () => { state.days = parseInt(b.dataset.days); loadData(); });
+  });
+
+  el.querySelectorAll('.week-header').forEach(h => {
+    h.addEventListener('click', () => {
+      const body = h.nextElementSibling;
+      const chev = h.querySelector('.week-chevron');
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      chev.classList.toggle('open', !open);
+    });
+  });
+
+  el.querySelectorAll('.day-header').forEach(h => {
+    h.addEventListener('click', () => {
+      const body = h.nextElementSibling;
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+    });
+  });
+
+  el.querySelectorAll('.trade-row').forEach(r => {
+    r.addEventListener('click', () => {
+      const idx = r.dataset.idx;
+      openModal(state.rawPnl[parseInt(idx)]);
+    });
+  });
+}
+
+function renderWeek(w, open=true) {
+  const isPos = w.pnl >= 0;
+  const wr = w.total ? Math.round(w.wins/w.total*100) : 0;
+  const dkeys = Object.keys(w.days).sort((a,b) => w.days[b].ts - w.days[a].ts);
+  return `
+    <div class="week-group">
+      <div class="week-header">
+        <div>
+          <div class="week-label">${w.label}</div>
+          <div class="week-meta">${w.wins}/${w.total} сделок · ${wr}% win</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="week-pnl ${pnlClass(w.pnl)}">${fmtPnl(w.pnl)}</div>
+          <svg class="week-chevron ${open?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </div>
+      </div>
+      <div style="display:${open?'block':'none'}">
+        ${dkeys.map(dk => renderDay(w.days[dk])).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderDay(day) {
+  const isPos = day.pnl >= 0;
+  return `
+    <div class="day-group">
+      <div class="day-header">
+        <div class="day-label">${day.label}</div>
+        <div class="day-pnl ${pnlClass(day.pnl)}">${fmtPnl(day.pnl)}</div>
+      </div>
+      <div>
+        ${day.trades.map(t => renderTradeRow(t)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderTradeRow(t) {
+  const pnl  = parseFloat(t.closedPnl) || 0;
+  const dur  = parseInt(t.updatedTime) - parseInt(t.createdTime);
+  const side = t.side === 'Buy' ? 'Long' : 'Short';
+  const pnlPct = t.cumEntryValue
+    ? (pnl / parseFloat(t.cumEntryValue) * 100).toFixed(2) : '0.00';
+  const globalIdx = state.rawPnl.indexOf(t);
+  const ts   = new Date(parseInt(t.createdTime));
+  const tstr = `${ts.getHours().toString().padStart(2,'0')}:${ts.getMinutes().toString().padStart(2,'0')}:${ts.getSeconds().toString().padStart(2,'0')}`;
+
+  return `
+    <div class="trade-row" data-idx="${globalIdx}">
+      <div>
+        <div class="trade-sym">${t.symbol.replace('USDT','')}<span style="font-size:9px;color:var(--text3)">USDT</span></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px">${tstr}</div>
+      </div>
+      <div class="trade-dir ${side.toLowerCase()}">${side}</div>
+      <div class="trade-dur">${fmtDur(dur)}</div>
+      <div>
+        <div class="trade-pnl ${pnlClass(pnl)}">${fmtPnl(pnl)}</div>
+        <div class="trade-pct ${pnlClass(pnl)}">${pnl>=0?'+':''}${pnlPct}%</div>
+      </div>
+    </div>
+  `;
+}
+
+/* ═══════════════════════════════════════
+   TRADE DETAIL MODAL
+═══════════════════════════════════════ */
+function openModal(t) {
+  if (!t) return;
+  const pnl    = parseFloat(t.closedPnl) || 0;
+  const side   = t.side === 'Buy' ? 'Long' : 'Short';
+  const sideDir= t.side === 'Buy' ? 'long' : 'short';
+  const dur    = parseInt(t.updatedTime) - parseInt(t.createdTime);
+  const pnlPct = t.cumEntryValue
+    ? (pnl / parseFloat(t.cumEntryValue) * 100).toFixed(2) : '0.00';
+  const entryDate = new Date(parseInt(t.createdTime));
+  const exitDate  = new Date(parseInt(t.updatedTime));
+
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <div class="modal-sym">${t.symbol}</div>
+      <div class="trade-dir ${sideDir}">${side}</div>
+    </div>
+    <div class="modal-pnl ${pnlClass(pnl)}">${fmtPnl(pnl)} <span style="font-size:16px;color:var(--text2)">(${pnl>=0?'+':''}${pnlPct}%)</span></div>
+
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-label">Размер позиции</div>
+        <div class="detail-val">${parseFloat(t.closedSize).toFixed(4)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Длительность</div>
+        <div class="detail-val">${fmtDur(dur)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Вход (avg)</div>
+        <div class="detail-val">$${parseFloat(t.avgEntryPrice||0).toFixed(6)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Выход (avg)</div>
+        <div class="detail-val">$${parseFloat(t.avgExitPrice||0).toFixed(6)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Открытие</div>
+        <div class="detail-val" style="font-size:11px">${fmtDateTime(entryDate)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Закрытие</div>
+        <div class="detail-val" style="font-size:11px">${fmtDateTime(exitDate)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Объём входа</div>
+        <div class="detail-val">$${parseFloat(t.cumEntryValue||0).toFixed(2)}</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Объём выхода</div>
+        <div class="detail-val">$${parseFloat(t.cumExitValue||0).toFixed(2)}</div>
+      </div>
+    </div>
+
+    <div class="sec-header" style="margin-bottom:6px">
+      <div class="sec-title">Executions</div>
+    </div>
+    <div id="exec-wrap" style="text-align:center;padding:12px;color:var(--text3);font-size:12px">
+      <div class="spinner" style="margin:0 auto 8px"></div>Загружаем…
+    </div>
+
+    <br>
+    <button class="btn secondary" onclick="closeModal()">Закрыть</button>
+  `;
+
+  document.getElementById('modal').classList.add('open');
+  loadExecs(t.symbol, t);
+}
+
+async function loadExecs(symbol, t) {
+  const wrap = document.getElementById('exec-wrap');
+  if (!wrap) return;
+  try {
+    const execs = await fetchExecutions(symbol, state.days);
+    // Filter to this trade timeframe approximately
+    const entry = parseInt(t.createdTime) - 60000;
+    const exit  = parseInt(t.updatedTime) + 60000;
+    const rel   = execs.filter(e => {
+      const et = parseInt(e.execTime);
+      return et >= entry && et <= exit;
+    }).slice(0, 20);
+
+    if (!rel.length) {
+      wrap.innerHTML = '<div style="color:var(--text3);font-size:12px">Нет детальных данных</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="exec-table">
+          <thead><tr>
+            <th>Время</th>
+            <th>Сторона</th>
+            <th>Цена</th>
+            <th>Кол-во</th>
+            <th>Комис.</th>
+          </tr></thead>
+          <tbody>
+            ${rel.map(e => {
+              const isBuy = e.side === 'Buy';
+              const et = new Date(parseInt(e.execTime));
+              return `<tr>
+                <td>${et.getHours().toString().padStart(2,'0')}:${et.getMinutes().toString().padStart(2,'0')}:${et.getSeconds().toString().padStart(2,'0')}</td>
+                <td class="${isBuy?'exec-buy':'exec-sell'}">${isBuy?'Покупка':'Продажа'}</td>
+                <td>$${parseFloat(e.execPrice).toFixed(6)}</td>
+                <td>${parseFloat(e.execQty).toFixed(2)}</td>
+                <td style="color:var(--text2)">$${parseFloat(e.execFee||0).toFixed(4)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(err) {
+    if (wrap) wrap.innerHTML = `<div style="color:var(--text3);font-size:12px">Не удалось загрузить: ${err.message}</div>`;
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function fmtDateTime(d) {
+  return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+}
+
+/* ═══════════════════════════════════════
+   RENDER — SETTINGS
+═══════════════════════════════════════ */
+function renderSettings() {
+  document.getElementById('inp-key').value    = state.apiKey;
+  document.getElementById('inp-secret').value = state.apiSecret ? '••••••••' : '';
+  document.getElementById('inp-acc').value    = state.accType;
+}
+
+/* ═══════════════════════════════════════
+   HELPERS: EMPTY STATES
+═══════════════════════════════════════ */
+function loadingHTML(msg='Загружаем…') {
+  return `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${msg}</div></div>`;
+}
+function noKeyHTML() {
+  return `<div class="empty-wrap">
+    <div class="empty-icon">🔑</div>
+    <div class="empty-text">Добавьте API ключ Bybit Testnet<br>во вкладке <strong>Настройки</strong></div>
+  </div>`;
+}
+function emptyHTML() {
+  return `<div class="empty-wrap">
+    <div class="empty-icon">📊</div>
+    <div class="empty-text">Нет данных за выбранный период.<br>Попробуйте другой диапазон дат.</div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+function showToast(msg, ok=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast show' + (ok ? ' success-toast' : '');
+  setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+
+/* ═══════════════════════════════════════
+   DATA LOADING
+═══════════════════════════════════════ */
+async function loadData() {
+  if (!state.apiKey || !state.apiSecret) {
+    renderCurrentScreen();
+    return;
+  }
+  state.loading = true;
+  state.data    = null;
+  renderCurrentScreen();
+
+  try {
+    const raw = await fetchClosedPnl(state.days);
+    state.rawPnl = raw;
+    state.data   = processData(raw);
+  } catch (err) {
+    showToast('Ошибка API: ' + err.message);
+    state.data = null;
+  } finally {
+    state.loading = false;
+    renderCurrentScreen();
+  }
+}
+
+function renderCurrentScreen() {
+  if (state.screen === 'dash')     renderDash();
+  if (state.screen === 'trades')   renderTrades();
+  if (state.screen === 'settings') renderSettings();
+}
+
+/* ═══════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════ */
+function switchScreen(name) {
+  state.screen = name;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(`screen-${name}`).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+  document.getElementById('btn-refresh').style.display = (name !== 'settings') ? 'flex' : 'none';
+  document.getElementById('content').scrollTop = 0;
+  renderCurrentScreen();
+}
+
+/* ═══════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════ */
+document.querySelectorAll('.nav-btn').forEach(b => {
+  b.addEventListener('click', () => switchScreen(b.dataset.screen));
+});
+
+document.getElementById('btn-refresh').addEventListener('click', () => loadData());
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  const key    = document.getElementById('inp-key').value.trim();
+  const secret = document.getElementById('inp-secret').value.trim();
+  const acc    = document.getElementById('inp-acc').value;
+
+  if (!key || !secret || secret === '••••••••') {
+    showToast('Введите API Key и Secret');
+    return;
+  }
+  state.apiKey    = key;
+  state.apiSecret = secret;
+  state.accType   = acc;
+  localStorage.setItem('td_key',    key);
+  localStorage.setItem('td_secret', secret);
+  localStorage.setItem('td_acc',    acc);
+  showToast('✓ Сохранено. Загружаем данные…', true);
+  setTimeout(() => switchScreen('dash'), 800);
+  loadData();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('Очистить все данные и API ключи?')) return;
+  localStorage.removeItem('td_key');
+  localStorage.removeItem('td_secret');
+  localStorage.removeItem('td_acc');
+  state.apiKey = ''; state.apiSecret = ''; state.data = null; state.rawPnl = [];
+  document.getElementById('inp-key').value = '';
+  document.getElementById('inp-secret').value = '';
+  showToast('Данные очищены');
+});
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+(function init() {
+  if (state.apiKey) {
+    document.getElementById('hdr-sub').textContent = 'Testnet · ' + state.apiKey.slice(0,6) + '…';
+    document.getElementById('btn-refresh').style.display = 'flex';
+  }
+  renderSettings();
+  if (state.apiKey && state.apiSecret) {
+    loadData();
+  } else {
+    renderDash();
+  }
+})();
+</script>
+</body>
+</html>
