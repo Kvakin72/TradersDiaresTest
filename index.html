@@ -588,9 +588,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div id="page-profile" style="display:none">
         <div class="profile-panel">
           <div class="profile-section">
-            <div class="profile-section-title" style="justify-content:space-between;display:flex;align-items:center">
+            <div class="profile-section-title" style="justify-content:space-between;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
               <span>🔑 API ключи / Счета</span>
-              <button class="btn primary" style="font-size:11px" onclick="document.getElementById('addBybitModal').classList.add('open')">+ Подключить Bybit Demo</button>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span id="lastSyncLabel" style="font-size:10px;color:var(--text3);font-family:var(--mono)"></span>
+                <button class="btn" style="font-size:11px" id="syncAllBtn" onclick="syncAllKeys()">⟳ Синхронизировать</button>
+                <button class="btn primary" style="font-size:11px" onclick="document.getElementById('addBybitModal').classList.add('open')">+ Подключить Bybit Demo</button>
+              </div>
             </div>
             <div id="apiKeysList">
               <div class="empty-state" style="padding:30px 20px">
@@ -879,18 +883,7 @@ let allBases = ['Пробой уровня', 'Откат к поддержке',
 let sortField = 'pnl', sortDir = -1;
 let filterFav = false, filterDir = null, filterSymbol = '', filterBasis = '';
 
-let trades = [
-  {id:1, time:'2025-03-29 14:32', symbol:'BTCUSDT', dir:'Long', entry:67420.5, exit:68150.0, vol:5000, qty:0.074, fee:3.50, funding:0.80, basis:'Пробой уровня', comment:'Сильный пробой дневного уровня', fav:true, pnl:0, pnlPct:0},
-  {id:2, time:'2025-03-29 11:05', symbol:'ETHUSDT', dir:'Short', entry:3820.0, exit:3755.5, vol:4000, qty:1.05, fee:2.80, funding:0.50, basis:'Паттерн', comment:'Двойная вершина на 4H', fav:false, pnl:0, pnlPct:0},
-  {id:3, time:'2025-03-28 18:44', symbol:'SOLUSDT', dir:'Long', entry:182.5, exit:175.2, vol:3000, qty:16.4, fee:2.10, funding:1.20, basis:'Откат к поддержке', comment:'Ложный пробой, стоп', fav:false, pnl:0, pnlPct:0},
-  {id:4, time:'2025-03-28 10:15', symbol:'BNBUSDT', dir:'Long', entry:598.0, exit:612.5, vol:3500, qty:5.85, fee:2.45, funding:0.30, basis:'Тренд', comment:'Следование тренду на 1H', fav:true, pnl:0, pnlPct:0},
-  {id:5, time:'2025-03-27 20:30', symbol:'BTCUSDT', dir:'Short', entry:68900.0, exit:67800.0, vol:8000, qty:0.116, fee:5.60, funding:2.10, basis:'Дивергенция', comment:'RSI дивергенция + уровень', fav:true, pnl:0, pnlPct:0},
-  {id:6, time:'2025-03-27 15:20', symbol:'XRPUSDT', dir:'Long', entry:0.5820, exit:0.6105, vol:2000, qty:3436, fee:1.40, funding:0.20, basis:'Объёмный импульс', comment:'Всплеск объёма на поддержке', fav:false, pnl:0, pnlPct:0},
-  {id:7, time:'2025-03-26 09:10', symbol:'AVAXUSDT', dir:'Short', entry:38.90, exit:36.50, vol:2500, qty:64.3, fee:1.75, funding:0.45, basis:'Паттерн', comment:'Голова и плечи', fav:false, pnl:0, pnlPct:0},
-  {id:8, time:'2025-03-25 22:05', symbol:'DOGEUSDT', dir:'Long', entry:0.1645, exit:0.1720, vol:1500, qty:9118, fee:1.05, funding:0.15, basis:'Тренд', comment:'Трендовый откат', fav:false, pnl:0, pnlPct:0},
-  {id:9, time:'2025-03-25 14:55', symbol:'ETHUSDT', dir:'Long', entry:3650.0, exit:3780.0, vol:5500, qty:1.51, fee:3.85, funding:1.00, basis:'Откат к поддержке', comment:'Ключевой уровень + объём', fav:true, pnl:0, pnlPct:0},
-  {id:10, time:'2025-03-24 11:30', symbol:'ADAUSDT', dir:'Short', entry:0.485, exit:0.462, vol:1800, qty:3711, fee:1.26, funding:0.22, basis:'Дивергенция', comment:'Медвежья дивергенция', fav:false, pnl:0, pnlPct:0},
-];
+let trades = []; // Populated via manual entry or Bybit Demo API sync
 
 // PnL calculated in calcPnl() at init
 
@@ -900,7 +893,39 @@ const BYBIT_DEMO_BASE = 'https://api-demo.bybit.com';
 // In production wrap with a lightweight proxy or backend.
 // The full signing logic below is production-ready.
 
-let apiKeys = []; // populated via addBybitDemoKey()
+// ---- API Keys persistence (keys stored in localStorage, secrets in sessionStorage only) ----
+let apiKeys = [];
+
+function saveApiKeys() {
+  // Store only non-sensitive fields: name, key (masked display), exchange, date, active, balance
+  const safe = apiKeys.map(k => ({
+    name: k.name, key: k.key, exchange: k.exchange,
+    date: k.date, active: k.active, corsBlocked: k.corsBlocked,
+    balance: k.balance
+    // secret intentionally NOT stored persistently
+  }));
+  try { localStorage.setItem('bb_api_keys', JSON.stringify(safe)); } catch(e){}
+}
+
+function loadApiKeys() {
+  try {
+    const raw = localStorage.getItem('bb_api_keys');
+    if(raw) {
+      const parsed = JSON.parse(raw);
+      // Restore secrets from sessionStorage (set during current session)
+      apiKeys = parsed.map(k => {
+        const sess = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+        return {...k, secret: sess || null};
+      });
+    }
+  } catch(e){ apiKeys = []; }
+}
+
+function saveSecretForSession(apiKey, secret) {
+  try { sessionStorage.setItem('bb_secret_' + apiKey.slice(0,8), secret); } catch(e){}
+}
+
+loadApiKeys();
 
 /* ---- HMAC-SHA256 via Web Crypto API ---- */
 async function hmacSha256(secret, message) {
@@ -995,30 +1020,35 @@ function getCoin(symbol) { const k = getCoinKey(symbol); return COINS[k] || {col
 function renderSummary() {
   const total = trades.reduce((s,t)=>s+t.pnl,0);
   const wins = trades.filter(t=>t.pnl>0).length;
-  const wr = ((wins/trades.length)*100).toFixed(1);
-  const totalFee = trades.reduce((s,t)=>s+t.fee+t.funding,0);
+  const n = trades.length || 1;
+  const wr = ((wins / n) * 100).toFixed(1);
+  const totalFee = trades.reduce((s,t)=>s+t.fee+(t.funding||0),0);
   const totalVol = trades.reduce((s,t)=>s+t.vol,0);
+  const avgPnl = total / n;
+  // Get equity from first connected key if available
+  const equity = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalEquity : null;
+  const pctStr = equity ? ((total/equity)*100).toFixed(2) : '—';
   const grid = document.getElementById('summaryGrid');
   grid.innerHTML = `
     <div class="sum-card">
       <div class="sum-label">Итого PnL</div>
       <div class="sum-val ${total>=0?'pos':'neg'}">${total>=0?'+':''}$${total.toFixed(2)}</div>
-      <div class="sum-change ${total>=0?'up':'down'}">За период <span>${total>=0?'+':''}${((total/22000)*100).toFixed(2)}%</span></div>
+      <div class="sum-change ${total>=0?'up':'down'}">За период <span>${equity ? (total>=0?'+':'') + pctStr + '%' : trades.length + ' сделок'}</span></div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Win Rate</div>
-      <div class="sum-val" style="color:var(--accent)">${wr}%</div>
+      <div class="sum-val" style="color:var(--accent)">${trades.length ? wr + '%' : '—'}</div>
       <div class="sum-change">Побед <span>${wins}</span> из ${trades.length}</div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Комиссии</div>
-      <div class="sum-val neg">-$${totalFee.toFixed(2)}</div>
-      <div class="sum-change">Оборот <span>$${(totalVol/1000).toFixed(0)}K</span></div>
+      <div class="sum-val ${totalFee>0?'neg':''}">${totalFee>0?'-':''}$${totalFee.toFixed(2)}</div>
+      <div class="sum-change">Оборот <span>$${(totalVol/1000).toFixed(1)}K</span></div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Сделок</div>
       <div class="sum-val" style="color:var(--text)">${trades.length}</div>
-      <div class="sum-change">Avg PnL <span style="color:${(total/trades.length)>=0?'var(--green)':'var(--red)'}">$${(total/trades.length).toFixed(2)}</span></div>
+      <div class="sum-change">Avg PnL <span style="color:${avgPnl>=0?'var(--green)':'var(--red)'}">$${trades.length ? avgPnl.toFixed(2) : '0.00'}</span></div>
     </div>
   `;
 }
@@ -1036,7 +1066,20 @@ function renderTrades() {
   });
 
   const body = document.getElementById('tradesBody');
-  if(!data.length){ body.innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Нет трейдов по выбранным фильтрам</div></div>'; return; }
+  if(!data.length){
+    body.innerHTML = trades.length === 0
+      ? `<div class="empty-state" style="padding:48px 20px">
+          <div class="empty-icon">🔌</div>
+          <div class="empty-text">Нет данных о сделках</div>
+          <div style="color:var(--text3);font-size:12px;margin-top:6px;margin-bottom:16px">Подключите Bybit Demo Trading или добавьте сделку вручную</div>
+          <div style="display:flex;gap:10px;justify-content:center">
+            <button class="btn primary" onclick="document.getElementById('addBybitModal').classList.add('open')">🔗 Подключить Bybit Demo</button>
+            <button class="btn" onclick="document.getElementById('addTradeModal').classList.add('open')">➕ Добавить вручную</button>
+          </div>
+        </div>`
+      : `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Нет трейдов по выбранным фильтрам</div></div>`;
+    return;
+  }
 
   body.innerHTML = data.map(t => {
     const coin = getCoin(t.symbol);
@@ -1057,7 +1100,7 @@ function renderTrades() {
             <div class="coin-icon" style="background:${coin.color}">${coin.icon}</div>
             <div>
               <div class="symbol-name">${ck}</div>
-              <div class="symbol-base">USDT</div>
+              <div class="symbol-base">${t.source === 'bybit-demo' ? '<span style="color:#f7a600;font-weight:700">DEMO</span>' : 'USDT'}</div>
             </div>
           </div>
         </div>
@@ -1133,6 +1176,10 @@ function renderDeals() {
     sub.forEach((d,i) => allDeals.push({...d, tradeId: t.id, symbol: t.symbol, time: t.time}));
   });
   const body = document.getElementById('dealsBody');
+  if(!allDeals.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Нет сделок для отображения</div></div>';
+    return;
+  }
   body.innerHTML = allDeals.map(d => {
     const coin = getCoin(d.symbol);
     const ck = getCoinKey(d.symbol);
@@ -1153,16 +1200,23 @@ function renderDeals() {
 }
 
 function renderTransactions() {
-  const txs = [
-    {date:'2025-03-29 14:35', type:'fee', symbol:'BTCUSDT', amount:-3.50, balance:22487.23, desc:'Комиссия за сделку #000001'},
-    {date:'2025-03-29 11:08', type:'fee', symbol:'ETHUSDT', amount:-2.80, balance:22490.73, desc:'Комиссия за сделку #000002'},
-    {date:'2025-03-28 00:00', type:'funding', symbol:'SOLUSDT', amount:-1.20, balance:22493.53, desc:'Фандинг SOLUSDT'},
-    {date:'2025-03-28 00:00', type:'funding', symbol:'BNBUSDT', amount:-0.30, balance:22494.73, desc:'Фандинг BNBUSDT'},
-    {date:'2025-03-27 20:33', type:'fee', symbol:'BTCUSDT', amount:-5.60, balance:22495.03, desc:'Комиссия за сделку #000005'},
-    {date:'2025-03-26 00:00', type:'referal', symbol:'—', amount:+8.50, balance:22500.63, desc:'Реферальные выплаты'},
-    {date:'2025-03-25 00:00', type:'funding', symbol:'ETHUSDT', amount:+1.00, balance:22492.13, desc:'Фандинг ETHUSDT (входящий)'},
-  ];
+  const txs = [];
+  let runBalance = 0;
+  // Build transaction list from actual trades
+  const sorted = [...trades].sort((a,b) => a.time > b.time ? 1 : -1);
+  sorted.forEach(t => {
+    if(t.fee > 0) txs.push({date:t.time, type:'fee', symbol:t.symbol, amount:-t.fee, desc:`Комиссия за сделку (${getCoinKey(t.symbol)})`});
+    if(t.funding && t.funding !== 0) txs.push({date:t.time, type:'funding', symbol:t.symbol, amount:-t.funding, desc:`Фандинг ${t.symbol}`});
+  });
+  txs.sort((a,b) => a.date > b.date ? -1 : 1);
+  let cumBal = trades.reduce((s,t) => s + t.pnl, 0);
+  txs.forEach(tx => { tx.balance = cumBal; cumBal -= tx.amount; });
+
   const body = document.getElementById('txBody');
+  if(!txs.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Нет транзакций</div></div>';
+    return;
+  }
   body.innerHTML = txs.map(tx => `
     <div class="tx-row">
       <div style="font-family:var(--mono);font-size:11px">${tx.date}</div>
@@ -1283,27 +1337,39 @@ function renderTop5() {
 
 function renderWeekly() {
   const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-  const dayData = [
-    {pnl:842.30, trades:4, winRate:75, long:3, short:1, vol:15200, fee:23.5},
-    {pnl:-312.50, trades:3, winRate:33, long:1, short:2, vol:11800, fee:18.2},
-    {pnl:1205.80, trades:5, winRate:80, long:4, short:1, vol:22400, fee:31.7},
-    {pnl:650.20, trades:4, winRate:75, long:3, short:1, vol:17600, fee:24.8},
-    {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0},
-    {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0},
-    {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0},
-  ];
+  const today = new Date();
+  const dow = today.getDay(); // 0=Sun
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset);
+
+  const dayData = Array.from({length:7}, (_,i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = d.toISOString().slice(0,10);
+    const dayTrades = trades.filter(t => t.time && t.time.startsWith(dateStr));
+    if(!dayTrades.length) return {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0, isToday: dateStr === today.toISOString().slice(0,10)};
+    const pnl = dayTrades.reduce((s,t)=>s+t.pnl,0);
+    const wins = dayTrades.filter(t=>t.pnl>0).length;
+    const winRate = Math.round((wins/dayTrades.length)*100);
+    const long = dayTrades.filter(t=>t.dir==='Long').length;
+    const short = dayTrades.filter(t=>t.dir==='Short').length;
+    const vol = dayTrades.reduce((s,t)=>s+t.vol,0);
+    const fee = dayTrades.reduce((s,t)=>s+t.fee+(t.funding||0),0);
+    return {pnl, trades:dayTrades.length, winRate, long, short, vol, fee, isToday: dateStr === today.toISOString().slice(0,10)};
+  });
+
   document.getElementById('weekGrid').innerHTML = days.map((d,i) => {
     const dd = dayData[i];
-    const isToday = i === 3;
     if(dd.pnl === null) return `
-      <div class="day-card">
-        <div class="day-name">${d}</div>
+      <div class="day-card ${dd.isToday?'today':''}">
+        <div class="day-name">${d}${dd.isToday?' 📍':''}</div>
         <div class="day-pnl neutral">—</div>
         <div class="day-stats" style="color:var(--text3)">Нет торгов</div>
       </div>`;
     return `
-      <div class="day-card ${isToday?'today':''}">
-        <div class="day-name">${d}${isToday?' 📍':''}</div>
+      <div class="day-card ${dd.isToday?'today':''}">
+        <div class="day-name">${d}${dd.isToday?' 📍':''}</div>
         <div class="day-pnl ${dd.pnl>=0?'pos':'neg'}">${dd.pnl>=0?'+':''}$${Math.abs(dd.pnl).toFixed(0)}</div>
         <div class="day-stats">
           Win: ${dd.winRate}%<br>
@@ -1456,6 +1522,8 @@ async function bybitConnectStep2() {
   document.getElementById('step2ind').querySelector('div').style.color = 'white';
 
   pendingBybitKey = { name, key, secret, exchange: 'Bybit Demo', date: new Date().toISOString().slice(0,10), active: false };
+  // Pre-save secret to sessionStorage so it survives page reload
+  saveSecretForSession(key, secret);
 
   // Try real API call
   try {
@@ -1475,8 +1543,9 @@ async function bybitConnectStep2() {
     try {
       const fetched = await fetchBybitDemoTrades(key, secret);
       if (fetched.length > 0) {
+        fetched.forEach(t => t.apiKeyRef = key.slice(0,8));
         trades.unshift(...fetched);
-        trades.forEach(t => { if(!t.pnl) calcPnl(t); });
+        trades.forEach(t => { if(t.pnl === undefined) calcPnl(t); });
         document.getElementById('conn-trade-count').textContent = fetched.length;
         document.getElementById('connTradeBlock').style.display = '';
       }
@@ -1519,11 +1588,15 @@ function bybitStepBack() {
 
 function bybitSaveKey() {
   if (!pendingBybitKey) return;
+  // Save secret to sessionStorage only (survives tab, not browser restart)
+  if (pendingBybitKey.secret) saveSecretForSession(pendingBybitKey.key, pendingBybitKey.secret);
   apiKeys.push(pendingBybitKey);
+  saveApiKeys();
   closeModal('addBybitModal');
   renderApiKeys();
   renderSummary();
   renderTrades();
+  renderTransactions();
   // Reset step
   document.getElementById('bybitStep1').style.display = '';
   document.getElementById('bybitStep2').style.display = 'none';
@@ -1538,8 +1611,16 @@ function bybitSaveKey() {
 
 function deleteApiKey(idx) {
   if (!confirm('Удалить ключ "' + apiKeys[idx].name + '"?')) return;
+  const k = apiKeys[idx];
+  try { sessionStorage.removeItem('bb_secret_' + k.key.slice(0,8)); } catch(e){}
+  // Remove bybit-demo trades sourced from this key
+  trades = trades.filter(t => t.source !== 'bybit-demo' || t.apiKeyRef !== k.key.slice(0,8));
   apiKeys.splice(idx, 1);
+  saveApiKeys();
   renderApiKeys();
+  renderSummary();
+  renderTrades();
+  renderTransactions();
 }
 
 function renderApiKeys() {
@@ -1589,8 +1670,21 @@ async function refreshBybitKey(idx) {
   const k = apiKeys[idx];
   if (!k) return;
   const btn = event.currentTarget;
-  btn.textContent = '⟳ ...';
+  const origText = btn.textContent;
+  btn.innerHTML = '⟳ Синхронизация...';
   btn.disabled = true;
+
+  // Try to recover secret from sessionStorage if not in memory
+  if (!k.secret) {
+    k.secret = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8)) || null;
+  }
+  if (!k.secret) {
+    btn.textContent = origText;
+    btn.disabled = false;
+    alert('⚠️ Секрет API не найден в текущей сессии браузера.\nПожалуйста, переподключите аккаунт через «Подключить Bybit Demo».');
+    return;
+  }
+
   try {
     const bal = await fetchBybitDemoBalance(k.key, k.secret);
     k.balance = bal;
@@ -1598,27 +1692,70 @@ async function refreshBybitKey(idx) {
     k.corsBlocked = false;
     const fetched = await fetchBybitDemoTrades(k.key, k.secret);
     if (fetched.length > 0) {
-      trades = trades.filter(t => t.source !== 'bybit-demo');
+      // Tag each trade with this key ref
+      fetched.forEach(t => t.apiKeyRef = k.key.slice(0,8));
+      trades = trades.filter(t => !(t.source === 'bybit-demo' && t.apiKeyRef === k.key.slice(0,8)));
       trades.unshift(...fetched);
-      trades.forEach(t => calcPnl(t));
+      trades.forEach(t => { if(t.pnl === undefined) calcPnl(t); });
       renderSummary();
       renderTrades();
+      renderTransactions();
     }
+    saveApiKeys();
   } catch(e) {
     k.corsBlocked = true;
     k.active = false;
+    saveApiKeys();
   }
   renderApiKeys();
-  btn.textContent = '⟳ Обновить';
+  const now = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
+  const lbl = document.getElementById('lastSyncLabel');
+  if(lbl) lbl.textContent = `Обновлено ${now}`;
+  btn.textContent = origText;
   btn.disabled = false;
 }
 
-function calcPnl(t) {
-  if(t.pnl === undefined || t.pnl === 0) {
-    const mult = t.dir === 'Long' ? 1 : -1;
-    t.pnl = mult * (t.exit - t.entry) * t.qty - t.fee - (t.funding||0);
-    t.pnlPct = t.vol > 0 ? (t.pnl / t.vol) * 100 : 0;
+async function syncAllKeys() {
+  if(!apiKeys.length) {
+    document.getElementById('addBybitModal').classList.add('open');
+    return;
   }
+  const btn = document.getElementById('syncAllBtn');
+  if(btn) { btn.innerHTML = '⟳ Синхронизация...'; btn.disabled = true; }
+  let total = 0;
+  for(let idx = 0; idx < apiKeys.length; idx++) {
+    const k = apiKeys[idx];
+    if(!k.secret) k.secret = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+    if(!k.secret) continue;
+    try {
+      const bal = await fetchBybitDemoBalance(k.key, k.secret);
+      k.balance = bal; k.active = true; k.corsBlocked = false;
+      const fetched = await fetchBybitDemoTrades(k.key, k.secret);
+      fetched.forEach(t => t.apiKeyRef = k.key.slice(0,8));
+      trades = trades.filter(t => !(t.source === 'bybit-demo' && t.apiKeyRef === k.key.slice(0,8)));
+      trades.unshift(...fetched);
+      trades.forEach(t => { if(t.pnl === undefined) calcPnl(t); });
+      total += fetched.length;
+    } catch(e) { k.corsBlocked = true; k.active = false; }
+  }
+  saveApiKeys();
+  renderApiKeys();
+  renderSummary();
+  renderTrades();
+  renderTransactions();
+  updateBasisSelects();
+  const now = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
+  const lbl = document.getElementById('lastSyncLabel');
+  if(lbl) lbl.textContent = `Обновлено ${now}`;
+  if(btn) { btn.innerHTML = '⟳ Синхронизировать'; btn.disabled = false; }
+}
+
+function calcPnl(t) {
+  // Don't recalculate if pnl already set (e.g. from Bybit API)
+  if(t.pnl !== undefined && t.pnl !== 0) return;
+  const mult = t.dir === 'Long' ? 1 : -1;
+  t.pnl = mult * (t.exit - t.entry) * t.qty - t.fee - (t.funding||0);
+  t.pnlPct = t.vol > 0 ? (t.pnl / t.vol) * 100 : 0;
 }
 
 function renderBasisList() {
@@ -1821,6 +1958,11 @@ renderDeals();
 renderTransactions();
 updateBasisSelects();
 renderApiKeys();
+// Auto-refresh API keys that have secrets in sessionStorage
+apiKeys.forEach((k, idx) => {
+  const sess = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+  if(sess) { k.secret = sess; }
+});
 </script>
 </body>
 </html>
