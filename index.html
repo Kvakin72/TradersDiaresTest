@@ -1,1754 +1,1479 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Дневник Трейдера</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:       #0d1117;
-      --bg2:      #161b27;
-      --bg3:      #1e2535;
-      --bg4:      #252d3d;
-      --accent:   #3b82f6;
-      --accent2:  #60a5fa;
-      --green:    #22c55e;
-      --green-dim:#16a34a33;
-      --red:      #ef4444;
-      --red-dim:  #dc262633;
-      --yellow:   #f59e0b;
-      --text:     #e2e8f0;
-      --text2:    #8b96b0;
-      --text3:    #4f5a72;
-      --border:   #1e2d45;
-      --border2:  #263047;
-      --shadow:   0 4px 24px rgba(0,0,0,.45);
-      --mono:     'JetBrains Mono', monospace;
-      --sans:     'Sora', sans-serif;
-      --r:        12px;
-      --r2:       8px;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html, body { height: 100%; overflow: hidden; }
-    body {
-      font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 14px;
-      line-height: 1.5;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Дневник Трейдера</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0e14;
+  --bg2: #111520;
+  --bg3: #181d2e;
+  --bg4: #1f2640;
+  --border: #252c44;
+  --border2: #2e3858;
+  --text: #e8eaf0;
+  --text2: #8890ab;
+  --text3: #4a5270;
+  --accent: #4f8ef7;
+  --accent2: #2d6bf5;
+  --green: #22d1a0;
+  --green2: #16a87f;
+  --green-bg: rgba(34, 209, 160, 0.08);
+  --red: #f7516a;
+  --red2: #d93a52;
+  --red-bg: rgba(247, 81, 106, 0.08);
+  --gold: #f5c842;
+  --purple: #a78bfa;
+  --radius: 10px;
+  --radius2: 6px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --font: 'Manrope', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+[data-theme="light"] {
+  --bg: #f0f2f8;
+  --bg2: #ffffff;
+  --bg3: #f7f8fc;
+  --bg4: #eceef7;
+  --border: #dde1f0;
+  --border2: #c8cde4;
+  --text: #1a1e30;
+  --text2: #5a6280;
+  --text3: #9aa0bc;
+  --green-bg: rgba(34, 209, 160, 0.1);
+  --red-bg: rgba(247, 81, 106, 0.1);
+  --shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; overflow: hidden; }
 
-    /* ─── Layout ─── */
-    #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-    .header {
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 52px;
-      flex-shrink: 0;
-      position: relative;
-      z-index: 10;
-    }
-    .header-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.02em;
-    }
-    .header-sub {
-      font-size: 11px;
-      color: var(--text2);
-      margin-top: 1px;
-    }
-    .header-logo {
-      width: 32px; height: 32px;
-      background: var(--accent);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--mono);
-      font-weight: 700;
-      font-size: 13px;
-      color: #fff;
-      flex-shrink: 0;
-    }
-    .header-left { display: flex; align-items: center; gap: 10px; }
-    .header-right { display: flex; align-items: center; gap: 8px; }
+/* LAYOUT */
+#app { display: flex; height: 100vh; }
+#sidebar { width: 220px; min-width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 0; z-index: 10; }
+#main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 
-    .content {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-    }
-    .content::-webkit-scrollbar { width: 0; }
+/* SIDEBAR */
+.sidebar-logo { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.logo-text { font-weight: 800; font-size: 15px; letter-spacing: -0.3px; }
+.logo-sub { font-size: 10px; color: var(--text3); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
 
-    .bottom-nav {
-      background: var(--bg2);
-      border-top: 1px solid var(--border);
-      display: flex;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      flex-shrink: 0;
-    }
-    .nav-btn {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 8px 4px;
-      gap: 3px;
-      background: none;
-      border: none;
-      color: var(--text3);
-      cursor: pointer;
-      transition: color .2s;
-      font-family: var(--sans);
-      font-size: 10px;
-      font-weight: 500;
-    }
-    .nav-btn.active { color: var(--accent2); }
-    .nav-btn svg { width: 20px; height: 20px; }
+.sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+.nav-section { padding: 6px 14px 2px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); margin-top: 8px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; margin: 1px 8px; border-radius: var(--radius2); cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 500; transition: all 0.15s; position: relative; }
+.nav-item:hover { background: var(--bg4); color: var(--text); }
+.nav-item.active { background: rgba(79, 142, 247, 0.12); color: var(--accent); }
+.nav-item.active::before { content: ''; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; background: var(--accent); border-radius: 0 3px 3px 0; }
+.nav-icon { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 
-    /* ─── Screens ─── */
-    .screen { display: none; padding: 16px; padding-bottom: 24px; }
-    .screen.active { display: block; }
+.sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+.user-card { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius2); cursor: pointer; }
+.user-card:hover { background: var(--bg4); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #4f8ef7, #a78bfa); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white; flex-shrink: 0; }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-email { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* ─── Cards ─── */
-    .card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 16px;
-      margin-bottom: 12px;
-    }
-    .card-sm { padding: 12px; }
+/* TOPBAR */
+#topbar { height: 54px; background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0; }
+.topbar-title { font-weight: 700; font-size: 16px; flex: 1; }
+.topbar-tabs { display: flex; gap: 2px; background: var(--bg3); border-radius: var(--radius2); padding: 3px; }
+.tab-btn { padding: 5px 14px; border-radius: 4px; border: none; background: none; color: var(--text2); font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.tab-btn.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius2); border: 1px solid var(--border); background: var(--bg3); color: var(--text2); font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn:hover { border-color: var(--border2); color: var(--text); background: var(--bg4); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn.primary:hover { background: var(--accent2); }
+.btn-icon { padding: 7px 9px; }
+.theme-btn { font-size: 15px; }
 
-    /* ─── Stats Grid ─── */
-    .stats-hero {
-      background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%);
-      border: 1px solid var(--border2);
-      border-radius: var(--r);
-      padding: 20px;
-      margin-bottom: 12px;
-      position: relative;
-      overflow: hidden;
-    }
-    .stats-hero::before {
-      content: '';
-      position: absolute;
-      top: -30px; right: -30px;
-      width: 120px; height: 120px;
-      background: var(--accent);
-      opacity: .05;
-      border-radius: 50%;
-    }
-    .hero-pnl {
-      font-family: var(--mono);
-      font-size: 34px;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .hero-pnl.pos { color: var(--green); }
-    .hero-pnl.neg { color: var(--red); }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: var(--green-dim);
-      color: var(--green);
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-family: var(--mono);
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 16px;
-    }
-    .hero-badge.neg { background: var(--red-dim); color: var(--red); }
+/* CONTENT */
+#content { flex: 1; padding: 20px 24px; }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .stat-item {
-      background: var(--bg3);
-      border-radius: var(--r2);
-      padding: 10px 12px;
-    }
-    .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
-    .stat-val {
-      font-family: var(--mono);
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .stat-val.green { color: var(--green); }
-    .stat-val.red { color: var(--red); }
+/* FILTERS BAR */
+.filters-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.filter-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 28px 6px 10px; border-radius: var(--radius2); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238890ab' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+.filter-select:focus { outline: none; border-color: var(--accent); }
+.filter-tag { display: flex; align-items: center; gap: 5px; padding: 5px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+.filter-tag:hover, .filter-tag.active { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.08); }
+.filter-tag.fav.active { border-color: var(--gold); color: var(--gold); background: rgba(245,200,66,0.08); }
+.spacer { flex: 1; }
 
-    /* ─── Long/Short Split ─── */
-    .ls-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .ls-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 12px;
-    }
-    .ls-title { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
-    .ls-count {
-      display: inline-block;
-      background: var(--bg4);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--text2);
-      margin-left: 4px;
-    }
-    .ls-pnl {
-      font-family: var(--mono);
-      font-size: 18px;
-      font-weight: 700;
-    }
-    .ls-bar-row { display: flex; gap: 2px; margin-top: 8px; }
-    .ls-bar-green { height: 5px; background: var(--green); border-radius: 3px; }
-    .ls-bar-red   { height: 5px; background: var(--red);   border-radius: 3px; }
+/* SUMMARY CARDS */
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.sum-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.sum-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.sum-val { font-size: 22px; font-weight: 800; font-family: var(--mono); letter-spacing: -0.5px; }
+.sum-val.pos { color: var(--green); }
+.sum-val.neg { color: var(--red); }
+.sum-change { font-size: 11px; margin-top: 4px; color: var(--text3); }
+.sum-change span { font-weight: 600; }
+.sum-change.up span { color: var(--green); }
+.sum-change.down span { color: var(--red); }
 
-    /* ─── Section Header ─── */
-    .sec-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-    .sec-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text2);
-      text-transform: uppercase;
-      letter-spacing: .07em;
-    }
+/* TABLE */
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.table-head { display: grid; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; gap: 8px; }
+.table-head.trades-grid, .trade-row .row-main { grid-template-columns: 26px 140px 70px 65px 90px 90px 90px 80px 70px 1fr 40px; }
+.th { display: flex; align-items: center; gap: 4px; cursor: pointer; transition: color 0.15s; user-select: none; }
+.th:hover { color: var(--text); }
+.th.sorted { color: var(--accent); }
+.sort-arrow { font-size: 10px; }
+.trade-row { border-bottom: 1px solid var(--border); }
+.trade-row:last-child { border-bottom: none; }
+.row-main { display: grid; padding: 11px 16px; gap: 8px; align-items: center; cursor: pointer; transition: background 0.12s; }
+.row-main:hover { background: var(--bg3); }
+.cell { display: flex; align-items: center; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell.mono { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+.cell.pos { color: var(--green); }
+.cell.neg { color: var(--red); }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.badge.long { background: var(--green-bg); color: var(--green); }
+.badge.short { background: var(--red-bg); color: var(--red); }
+.symbol-pair { display: flex; align-items: center; gap: 6px; }
+.coin-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: white; flex-shrink: 0; }
+.symbol-name { font-weight: 700; font-size: 13px; }
+.symbol-base { font-size: 10px; color: var(--text3); }
+.expand-btn { width: 22px; height: 22px; border-radius: 4px; background: var(--bg4); border: none; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.15s; flex-shrink: 0; }
+.expand-btn:hover { color: var(--accent); background: rgba(79,142,247,0.12); }
+.expand-btn.open { transform: rotate(90deg); color: var(--accent); }
+.fav-star { cursor: pointer; font-size: 14px; color: var(--text3); transition: all 0.15s; flex-shrink: 0; }
+.fav-star:hover, .fav-star.active { color: var(--gold); }
+.basis-tag { padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
 
-    /* ─── Symbol Table ─── */
-    .sym-list { display: flex; flex-direction: column; gap: 2px; }
-    .sym-row {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: var(--r2);
-      padding: 10px 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .sym-name {
-      font-family: var(--mono);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text);
-      min-width: 90px;
-    }
-    .sym-count {
-      background: var(--bg4);
-      border-radius: 4px;
-      padding: 1px 5px;
-      font-size: 10px;
-      font-family: var(--mono);
-      color: var(--text2);
-    }
-    .sym-bars { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-    .sym-bar-row { display: flex; gap: 2px; }
-    .sym-pnl {
-      font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 600;
-      text-align: right;
-      min-width: 60px;
-    }
+/* EXPANDED ROW */
+.row-expanded { background: var(--bg3); border-top: 1px solid var(--border); padding: 14px 16px 14px 42px; display: none; animation: slideDown 0.18s ease; }
+.row-expanded.open { display: block; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.expanded-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.exp-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); padding: 10px 14px; }
+.exp-label { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.exp-val { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.exp-val.pos { color: var(--green); }
+.exp-val.neg { color: var(--red); }
+.sub-deals { margin-top: 10px; }
+.sub-deal-head { display: grid; grid-template-columns: 120px 60px 90px 90px 80px 70px 1fr; gap: 8px; padding: 6px 10px; font-size: 10px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.sub-deal { display: grid; grid-template-columns: 120px 60px 90px 90px 80px 70px 1fr; gap: 8px; padding: 7px 10px; border-radius: var(--radius2); font-size: 11px; }
+.sub-deal:hover { background: var(--bg4); }
+.exp-comment { margin-top: 10px; }
+.comment-input { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); padding: 8px 12px; color: var(--text); font-family: var(--font); font-size: 12px; resize: none; height: 56px; transition: border-color 0.15s; }
+.comment-input:focus { outline: none; border-color: var(--accent); }
+.exp-actions { display: flex; gap: 8px; margin-top: 10px; }
 
-    /* ─── Trades List ─── */
-    .week-group { margin-bottom: 8px; }
-    .week-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      background: var(--bg3);
-      border-radius: var(--r2);
-      cursor: pointer;
-      margin-bottom: 4px;
-      border: 1px solid var(--border);
-      user-select: none;
-    }
-    .week-label { font-size: 12px; font-weight: 600; color: var(--text2); }
-    .week-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; }
-    .week-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
-    .week-chevron { color: var(--text3); transition: transform .2s; }
-    .week-chevron.open { transform: rotate(180deg); }
+/* ANALYTICS PANEL */
+.analytics-panel { display: none; }
+.analytics-panel.active { display: block; }
+.analytics-tabs { display: flex; gap: 2px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius2); padding: 4px; width: fit-content; margin-bottom: 20px; }
+.a-tab { padding: 6px 16px; border-radius: 5px; border: none; background: none; color: var(--text2); font-family: var(--font); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.a-tab.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 
-    .day-group { margin-bottom: 4px; }
-    .day-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 10px;
-      background: var(--bg2);
-      border-radius: var(--r2);
-      cursor: pointer;
-      margin-bottom: 2px;
-      border: 1px solid var(--border);
-    }
-    .day-label { font-size: 11px; color: var(--text2); font-weight: 500; }
-    .day-pnl { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+/* DASHBOARD */
+.dashboard-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.dash-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.dash-card-title { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+.pnl-main { font-size: 36px; font-weight: 800; font-family: var(--mono); letter-spacing: -1px; }
+.pnl-main.pos { color: var(--green); }
+.pnl-main.neg { color: var(--red); }
+.pnl-row { display: flex; gap: 20px; margin-top: 12px; }
+.pnl-stat { }
+.pnl-stat-label { font-size: 11px; color: var(--text3); font-weight: 500; }
+.pnl-stat-val { font-size: 14px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+.symbol-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.symbol-row:last-child { border-bottom: none; }
+.sym-name { font-weight: 700; font-size: 12px; width: 80px; flex-shrink: 0; }
+.sym-bar-wrap { flex: 1; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; position: relative; }
+.sym-bar-pos { height: 100%; border-radius: 3px; background: var(--green); position: absolute; left: 0; top: 0; }
+.sym-bar-neg { height: 100%; border-radius: 3px; background: var(--red); position: absolute; left: 0; top: 0; }
+.sym-pnl { font-family: var(--mono); font-size: 11px; font-weight: 600; width: 70px; text-align: right; flex-shrink: 0; }
+.ls-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.ls-row:last-child { border-bottom: none; }
+.ls-label { font-size: 12px; font-weight: 600; width: 50px; }
+.ls-bar-track { flex: 1; height: 8px; background: var(--bg4); border-radius: 4px; overflow: hidden; display: flex; }
+.ls-pos-bar { height: 100%; background: var(--green); border-radius: 4px 0 0 4px; }
+.ls-neg-bar { height: 100%; background: var(--red); border-radius: 0 4px 4px 0; }
+.ls-stats { font-size: 11px; color: var(--text3); width: 80px; text-align: right; font-family: var(--mono); }
+.tip-card { background: rgba(245,200,66,0.06); border: 1px solid rgba(245,200,66,0.2); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px; }
+.tip-title { font-size: 12px; font-weight: 700; color: var(--gold); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.tip-text { font-size: 12.5px; color: var(--text2); line-height: 1.6; }
+.chart-container { position: relative; height: 280px; }
+.daily-loss-input { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.dl-field { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius2); padding: 7px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; width: 140px; }
+.dl-field:focus { outline: none; border-color: var(--accent); }
+.top5-table { }
+.top5-head { display: grid; grid-template-columns: 30px 140px 80px 70px 90px 90px; gap: 8px; padding: 8px 14px; font-size: 11px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.top5-row { display: grid; grid-template-columns: 30px 140px 80px 70px 90px 90px; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); align-items: center; }
+.top5-rank { font-weight: 800; font-family: var(--mono); color: var(--text3); }
+.top5-rank.gold { color: var(--gold); }
 
-    .trade-row {
-      display: flex;
-      align-items: center;
-      padding: 10px 12px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      margin-bottom: 2px;
-      cursor: pointer;
-      transition: background .15s;
-      gap: 8px;
-    }
-    .trade-row:active { background: var(--bg3); }
-    .trade-sym { font-family: var(--mono); font-size: 12px; font-weight: 600; flex: 1; }
-    .trade-dir {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: var(--mono);
-    }
-    .trade-dir.short { color: var(--red);   background: var(--red-dim); }
-    .trade-dir.long  { color: var(--green); background: var(--green-dim); }
-    .trade-dur { font-size: 10px; color: var(--text3); min-width: 50px; }
-    .trade-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right; }
-    .trade-pct { font-size: 10px; font-family: var(--mono); text-align: right; }
+/* WEEKLY */
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.day-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.day-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 8px; }
+.day-pnl { font-family: var(--mono); font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+.day-pnl.pos { color: var(--green); }
+.day-pnl.neg { color: var(--red); }
+.day-pnl.neutral { color: var(--text3); }
+.day-stats { font-size: 10px; color: var(--text3); line-height: 1.7; }
+.day-card.today { border-color: var(--accent); background: rgba(79,142,247,0.05); }
 
-    /* ─── Trade Detail Modal ─── */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.7);
-      backdrop-filter: blur(4px);
-      z-index: 100;
-      display: none;
-      align-items: flex-end;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal-sheet {
-      background: var(--bg2);
-      border-radius: 18px 18px 0 0;
-      width: 100%;
-      max-height: 85vh;
-      overflow-y: auto;
-      padding: 20px 16px;
-      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-      animation: slideUp .25s ease;
-    }
-    @keyframes slideUp {
-      from { transform: translateY(100%); }
-      to   { transform: translateY(0); }
-    }
-    .modal-handle {
-      width: 36px; height: 4px;
-      background: var(--border2);
-      border-radius: 2px;
-      margin: 0 auto 16px;
-    }
-    .modal-sym {
-      font-family: var(--mono);
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .modal-pnl {
-      font-family: var(--mono);
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .detail-item { background: var(--bg3); border-radius: var(--r2); padding: 10px 12px; }
-    .detail-label { font-size: 10px; color: var(--text2); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .06em; }
-    .detail-val { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+/* PROFILE PANEL */
+.profile-panel { max-width: 600px; }
+.profile-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+.profile-section-title { padding: 14px 18px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.profile-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+.profile-row:last-child { border-bottom: none; }
+.pr-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+.pr-val { font-size: 13px; color: var(--text3); font-family: var(--mono); }
+.toggle { width: 36px; height: 20px; background: var(--bg4); border-radius: 10px; position: relative; cursor: pointer; transition: background 0.2s; border: 1px solid var(--border); }
+.toggle.on { background: var(--green); border-color: var(--green); }
+.toggle::after { content: ''; position: absolute; width: 14px; height: 14px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.toggle.on::after { left: 18px; }
+.api-key-item { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+.api-key-item:last-child { border-bottom: none; }
+.api-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+.api-dot.inactive { background: var(--red); }
+.api-name { font-weight: 600; font-size: 13px; flex: 1; }
+.api-exchange { font-size: 11px; color: var(--text3); }
+.api-date { font-size: 11px; color: var(--text3); font-family: var(--mono); }
 
-    .exec-table { width: 100%; border-collapse: collapse; }
-    .exec-table th {
-      text-align: left;
-      font-size: 10px;
-      color: var(--text2);
-      font-weight: 500;
-      padding: 4px 6px;
-      text-transform: uppercase;
-    }
-    .exec-table td {
-      padding: 6px 6px;
-      font-family: var(--mono);
-      font-size: 11px;
-      border-top: 1px solid var(--border);
-    }
-    .exec-buy  { color: var(--green); font-weight: 600; }
-    .exec-sell { color: var(--red);   font-weight: 600; }
+/* TRANSACTIONS TABLE */
+.tx-head { display: grid; grid-template-columns: 140px 100px 90px 90px 90px 1fr; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.tx-row { display: grid; grid-template-columns: 140px 100px 90px 90px 90px 1fr; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); align-items: center; font-size: 12px; transition: background 0.12s; }
+.tx-row:last-child { border-bottom: none; }
+.tx-row:hover { background: var(--bg3); }
+.tx-type { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+.tx-fee { background: rgba(79,142,247,0.1); color: var(--accent); }
+.tx-funding { background: rgba(167,139,250,0.1); color: var(--purple); }
+.tx-referal { background: rgba(34,209,160,0.1); color: var(--green); }
 
-    /* ─── Settings ─── */
-    .settings-section { margin-bottom: 20px; }
-    .settings-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text2);
-      text-transform: uppercase;
-      letter-spacing: .07em;
-      margin-bottom: 8px;
-    }
-    .field { margin-bottom: 10px; }
-    .field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
-    .field input, .field select {
-      width: 100%;
-      background: var(--bg3);
-      border: 1px solid var(--border2);
-      border-radius: var(--r2);
-      padding: 10px 12px;
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 13px;
-      outline: none;
-      transition: border-color .2s;
-    }
-    .field input:focus, .field select:focus { border-color: var(--accent); }
-    .field input::placeholder { color: var(--text3); }
-    .field select { appearance: none; }
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
-    .btn {
-      width: 100%;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--r2);
-      padding: 12px;
-      font-family: var(--sans);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s, transform .1s;
-    }
-    .btn:active { opacity: .85; transform: scale(.99); }
-    .btn.secondary {
-      background: var(--bg3);
-      color: var(--text2);
-      border: 1px solid var(--border);
-    }
-    .btn.danger { background: var(--red-dim); color: var(--red); border: 1px solid var(--red-dim); }
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; min-width: 340px; max-width: 480px; width: 100%; box-shadow: var(--shadow); animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+.modal-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+.modal-field { margin-bottom: 12px; }
+.modal-field label { display: block; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.modal-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius2); padding: 9px 12px; color: var(--text); font-family: var(--font); font-size: 13px; }
+.modal-input:focus { outline: none; border-color: var(--accent); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
-    /* ─── Date Filter ─── */
-    .date-filter {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 14px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-    }
-    .date-filter::-webkit-scrollbar { display: none; }
-    .df-btn {
-      flex-shrink: 0;
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 5px 12px;
-      font-family: var(--sans);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text2);
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .df-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-text { font-size: 14px; font-weight: 500; }
 
-    /* ─── Loading / Empty ─── */
-    .loading-wrap {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 60px 20px;
-      gap: 16px;
-    }
-    .spinner {
-      width: 36px; height: 36px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text { font-size: 13px; color: var(--text2); }
-
-    .empty-wrap {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 60px 20px; gap: 12px;
-    }
-    .empty-icon { font-size: 40px; }
-    .empty-text { font-size: 14px; color: var(--text2); text-align: center; }
-
-    /* ─── Notice ─── */
-    .notice {
-      background: var(--bg3);
-      border: 1px solid var(--border2);
-      border-left: 3px solid var(--yellow);
-      border-radius: var(--r2);
-      padding: 10px 12px;
-      font-size: 12px;
-      color: var(--text2);
-      margin-bottom: 12px;
-      line-height: 1.6;
-    }
-
-    /* ─── Refresh btn ─── */
-    .icon-btn {
-      width: 32px; height: 32px;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      color: var(--text2);
-      transition: all .15s;
-    }
-    .icon-btn:active { background: var(--bg4); }
-    .icon-btn svg { width: 16px; height: 16px; }
-
-    .pos { color: var(--green); }
-    .neg { color: var(--red); }
-    .neu { color: var(--text); }
-
-    /* ─── Chip ─── */
-    .chip {
-      display: inline-flex; align-items: center;
-      background: var(--bg4);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: 10px;
-      font-family: var(--mono);
-      color: var(--text2);
-    }
-
-    /* ─── Modal Tabs ─── */
-    .modal-tabs {
-      display: flex;
-      gap: 4px;
-      background: var(--bg3);
-      border-radius: var(--r2);
-      padding: 3px;
-      margin-bottom: 14px;
-    }
-    .modal-tab {
-      flex: 1;
-      padding: 7px;
-      border: none;
-      background: none;
-      border-radius: 6px;
-      font-family: var(--sans);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text2);
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .modal-tab.active {
-      background: var(--bg2);
-      color: var(--text);
-      box-shadow: 0 1px 4px rgba(0,0,0,.3);
-    }
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; }
-
-    /* ─── TradingView Chart ─── */
-    .tv-wrap {
-      border-radius: var(--r2);
-      overflow: hidden;
-      background: var(--bg3);
-      position: relative;
-    }
-    .tv-intervals {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-    .tv-int-btn {
-      padding: 4px 10px;
-      border: 1px solid var(--border);
-      background: var(--bg3);
-      border-radius: 6px;
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text2);
-      cursor: pointer;
-      transition: all .15s;
-    }
-    .tv-int-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-    .tv-open-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      padding: 10px;
-      background: var(--bg3);
-      border: 1px solid var(--border2);
-      border-radius: var(--r2);
-      color: var(--accent2);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      margin-top: 8px;
-      text-decoration: none;
-      font-family: var(--sans);
-    }
-    .tv-info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 10px;
-      background: var(--bg3);
-      border-radius: 6px;
-      margin-bottom: 6px;
-      font-size: 11px;
-    }
-
-    /* ─── Error Toast ─── */
-    .toast {
-      position: fixed;
-      bottom: 80px; left: 16px; right: 16px;
-      background: var(--red-dim);
-      border: 1px solid var(--red);
-      border-radius: var(--r2);
-      padding: 12px 14px;
-      color: var(--red);
-      font-size: 13px;
-      z-index: 200;
-      display: none;
-      animation: fadeIn .3s ease;
-    }
-    .toast.show { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-    .success-toast {
-      background: var(--green-dim);
-      border-color: var(--green);
-      color: var(--green);
-    }
-  </style>
+/* Responsive */
+@media (max-width: 1200px) {
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .dashboard-row { grid-template-columns: 1fr; }
+  .week-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 900px) {
+  #sidebar { width: 60px; min-width: 60px; }
+  .sidebar-logo .logo-text, .sidebar-logo .logo-sub, .nav-item span, .user-info { display: none; }
+  .nav-item { padding: 10px; justify-content: center; }
+  .nav-section { display: none; }
+  .user-card { justify-content: center; }
+}
+</style>
 </head>
 <body>
 <div id="app">
-  <!-- Header -->
-  <div class="header">
-    <div class="header-left">
-      <div class="header-logo">TD</div>
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📊</div>
       <div>
-        <div class="header-title">Дневник Трейдера</div>
-        <div class="header-sub" id="hdr-sub">Testnet Bybit</div>
+        <div class="logo-text">CryptoLog</div>
+        <div class="logo-sub">Дневник трейдера</div>
       </div>
     </div>
-    <div class="header-right">
-      <div class="icon-btn" id="btn-refresh" title="Обновить" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-          <path d="M3 3v5h5"/>
-        </svg>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Дневник</div>
+      <div class="nav-item active" onclick="showPage('diary')">
+        <div class="nav-icon">📋</div>
+        <span>Крипто-Дневник</span>
+      </div>
+      <div class="nav-item" onclick="showPage('analytics')">
+        <div class="nav-icon">📈</div>
+        <span>Аналитика</span>
+      </div>
+
+      <div class="nav-section" style="margin-top:16px">Настройки</div>
+      <div class="nav-item" onclick="showPage('profile')">
+        <div class="nav-icon">👤</div>
+        <span>Профиль</span>
+      </div>
+      <div class="nav-item" onclick="document.getElementById('addTradeModal').classList.add('open')">
+        <div class="nav-icon">➕</div>
+        <span>Добавить сделку</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card" onclick="showPage('profile')">
+        <div class="avatar">АТ</div>
+        <div class="user-info">
+          <div class="user-name">Алексей Трейдер</div>
+          <div class="user-email">alex@trade.pro</div>
+        </div>
       </div>
     </div>
-  </div>
+  </aside>
 
-  <!-- Content -->
-  <div class="content" id="content">
-
-    <!-- Dashboard Screen -->
-    <div class="screen active" id="screen-dash">
-      <div id="dash-inner"></div>
-    </div>
-
-    <!-- Trades Screen -->
-    <div class="screen" id="screen-trades">
-      <div id="trades-inner"></div>
-    </div>
-
-    <!-- Settings Screen -->
-    <div class="screen" id="screen-settings">
-      <div class="settings-section">
-        <div class="settings-label">Подключение к Bybit Testnet</div>
-        <div class="notice">
-          Создайте API ключи на <strong>testnet.bybit.com</strong> → Профиль → API Management.<br>
-          Необходимы права: <strong>Read-Only</strong> для позиций и трейдов.
-        </div>
-        <div class="field">
-          <label>API Key</label>
-          <input type="text" id="inp-key" placeholder="Вставьте API Key" autocomplete="off">
-        </div>
-        <div class="field">
-          <label>API Secret</label>
-          <input type="password" id="inp-secret" placeholder="Вставьте API Secret" autocomplete="off">
-        </div>
-        <div class="field">
-          <label>Тип аккаунта</label>
-          <select id="inp-acc">
-            <option value="UNIFIED">UNIFIED (рекомендуется)</option>
-            <option value="CONTRACT">CONTRACT (Legacy)</option>
-          </select>
-        </div>
+  <!-- MAIN -->
+  <div id="main">
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <div class="topbar-title" id="pageTitle">Крипто-Дневник</div>
+      <div class="topbar-tabs" id="diaryTabs">
+        <button class="tab-btn active" onclick="showDiaryTab('trades', this)">Трейды</button>
+        <button class="tab-btn" onclick="showDiaryTab('deals', this)">Сделки</button>
+        <button class="tab-btn" onclick="showDiaryTab('transactions', this)">Транзакции</button>
       </div>
-      <button class="btn" id="btn-save">Сохранить и подключить</button>
-      <br><br>
-      <button class="btn secondary" id="btn-clear">Очистить данные</button>
-      <br><br>
-      <div style="font-size:11px;color:var(--text3);text-align:center;line-height:1.7">
-        Ключи хранятся только на вашем устройстве.<br>
-        Приложение работает только с Bybit Testnet.
+      <div class="topbar-actions">
+        <button class="btn" onclick="exportData()">⬇ Экспорт</button>
+        <button class="btn primary" onclick="refreshData()">⟳ Обновить</button>
+        <button class="btn btn-icon theme-btn" onclick="toggleTheme()" title="Сменить тему">🌙</button>
       </div>
     </div>
 
-  </div>
+    <!-- CONTENT -->
+    <div id="content">
 
-  <!-- Bottom Nav -->
-  <div class="bottom-nav">
-    <button class="nav-btn active" data-screen="dash">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-      </svg>
-      Дашборд
-    </button>
-    <button class="nav-btn" data-screen="trades">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-      </svg>
-      Трейды
-    </button>
-    <button class="nav-btn" data-screen="settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
-      </svg>
-      Настройки
-    </button>
+      <!-- DIARY PAGE -->
+      <div id="page-diary">
+        <!-- Summary -->
+        <div class="summary-grid" id="summaryGrid"></div>
+
+        <!-- TRADES TAB -->
+        <div id="tab-trades">
+          <div class="filters-bar">
+            <select class="filter-select" onchange="filterByPeriod(this.value)">
+              <option value="all">Весь период</option>
+              <option value="today">Сегодня</option>
+              <option value="week" selected>Эта неделя</option>
+              <option value="month">Этот месяц</option>
+            </select>
+            <select class="filter-select" id="symbolFilter" onchange="filterBySymbol(this.value)">
+              <option value="">Все символы</option>
+            </select>
+            <select class="filter-select" id="basisFilter" onchange="filterByBasis(this.value)">
+              <option value="">Все основания</option>
+            </select>
+            <div class="filter-tag fav" id="favFilter" onclick="toggleFavFilter(this)">⭐ Избранное</div>
+            <div class="filter-tag" id="longFilter" onclick="toggleDirFilter(this, 'Long')">🔼 Long</div>
+            <div class="filter-tag" id="shortFilter" onclick="toggleDirFilter(this, 'Short')">🔽 Short</div>
+            <div class="spacer"></div>
+            <button class="btn" onclick="document.getElementById('addBasisModal').classList.add('open')">+ Основание</button>
+          </div>
+
+          <div class="table-wrap">
+            <div class="table-head trades-grid">
+              <div></div>
+              <div class="th" onclick="sortTable('time')"><span>Дата/Время</span><span class="sort-arrow" id="sort-time">↕</span></div>
+              <div class="th" onclick="sortTable('symbol')"><span>Символ</span></div>
+              <div>Напр.</div>
+              <div class="th" onclick="sortTable('entry')"><span>Вход</span></div>
+              <div class="th" onclick="sortTable('exit')"><span>Выход</span></div>
+              <div class="th sorted" onclick="sortTable('pnl')"><span>PnL $</span><span class="sort-arrow" id="sort-pnl">↓</span></div>
+              <div class="th" onclick="sortTable('pnlpct')"><span>PnL %</span><span class="sort-arrow" id="sort-pnlpct">↕</span></div>
+              <div>Комиссия</div>
+              <div>Основание</div>
+              <div>★</div>
+            </div>
+            <div id="tradesBody"></div>
+          </div>
+        </div>
+
+        <!-- DEALS TAB -->
+        <div id="tab-deals" style="display:none">
+          <div class="filters-bar">
+            <select class="filter-select">
+              <option value="all">Весь период</option>
+              <option value="week" selected>Эта неделя</option>
+              <option value="month">Этот месяц</option>
+            </select>
+            <div class="spacer"></div>
+          </div>
+          <div class="table-wrap">
+            <div class="table-head" style="grid-template-columns: 140px 90px 70px 100px 100px 80px 70px 1fr">
+              <div class="th">Дата/Время</div>
+              <div class="th">Символ</div>
+              <div>Напр.</div>
+              <div class="th">Цена</div>
+              <div class="th">Объём (USDT)</div>
+              <div class="th">Кол-во</div>
+              <div class="th">Комиссия</div>
+              <div>Трейд ID</div>
+            </div>
+            <div id="dealsBody"></div>
+          </div>
+        </div>
+
+        <!-- TRANSACTIONS TAB -->
+        <div id="tab-transactions" style="display:none">
+          <div class="filters-bar">
+            <select class="filter-select">
+              <option>Все типы</option>
+              <option>Комиссия</option>
+              <option>Фандинг</option>
+              <option>Реферальные</option>
+            </select>
+            <div class="spacer"></div>
+          </div>
+          <div class="table-wrap">
+            <div class="tx-head">
+              <div>Дата</div>
+              <div>Тип</div>
+              <div>Символ</div>
+              <div>Сумма USDT</div>
+              <div>Баланс</div>
+              <div>Описание</div>
+            </div>
+            <div id="txBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS PAGE -->
+      <div id="page-analytics" style="display:none">
+        <div class="analytics-tabs">
+          <button class="a-tab active" onclick="showAnalyticsTab('dashboard', this)">Dashboard</button>
+          <button class="a-tab" onclick="showAnalyticsTab('top5', this)">Топ-5</button>
+          <button class="a-tab" onclick="showAnalyticsTab('bar', this)">Столбчатая</button>
+          <button class="a-tab" onclick="showAnalyticsTab('line', this)">Линейный</button>
+          <button class="a-tab" onclick="showAnalyticsTab('dailyloss', this)">Daily Loss</button>
+          <button class="a-tab" onclick="showAnalyticsTab('weekly', this)">Недельная</button>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="atab-dashboard">
+          <div class="tip-card">
+            <div class="tip-title">💡 Совет</div>
+            <div class="tip-text">Ваш самый убыточный актив: <strong>SOLUSDT</strong>. Без него ваш PnL мог бы составить <strong style="color:var(--green)">+$1,847</strong> (+8.3%). Рассмотрите паузу в торговле этим активом.</div>
+          </div>
+          <div class="dashboard-row">
+            <div class="dash-card">
+              <div class="dash-card-title">PnL за период
+                <select class="filter-select" style="font-size:11px;padding:3px 24px 3px 8px">
+                  <option>Эта неделя</option>
+                  <option>Этот месяц</option>
+                  <option>Весь период</option>
+                </select>
+              </div>
+              <div class="pnl-main pos" id="dashPnl">+$3,421.50</div>
+              <div class="pnl-row">
+                <div class="pnl-stat">
+                  <div class="pnl-stat-label">Доходность</div>
+                  <div class="pnl-stat-val" style="color:var(--green)">+15.4%</div>
+                </div>
+                <div class="pnl-stat">
+                  <div class="pnl-stat-label">Оборот</div>
+                  <div class="pnl-stat-val">$284,320</div>
+                </div>
+                <div class="pnl-stat">
+                  <div class="pnl-stat-label">Комиссии</div>
+                  <div class="pnl-stat-val" style="color:var(--red)">-$142.16</div>
+                </div>
+                <div class="pnl-stat">
+                  <div class="pnl-stat-label">Трейды</div>
+                  <div class="pnl-stat-val">24</div>
+                </div>
+              </div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-card-title">Аналитика по символам</div>
+              <div id="symbolAnalytics"></div>
+            </div>
+          </div>
+          <div class="dashboard-row">
+            <div class="dash-card">
+              <div class="dash-card-title">Long / Short позиции</div>
+              <div id="lsAnalytics"></div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-card-title">Аналитика по основаниям</div>
+              <div id="basisAnalytics"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOP-5 -->
+        <div id="atab-top5" style="display:none">
+          <div class="dash-card">
+            <div class="dash-card-title">🏆 Топ-5 лучших трейдов</div>
+            <div class="table-wrap" style="border:none;margin-top:0">
+              <div class="top5-head">
+                <div>#</div>
+                <div>Символ / Дата</div>
+                <div>Направление</div>
+                <div>Время</div>
+                <div>PnL $</div>
+                <div>PnL %</div>
+              </div>
+              <div id="top5body"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BAR CHART -->
+        <div id="atab-bar" style="display:none">
+          <div class="dash-card">
+            <div class="dash-card-title">Столбчатая диаграмма PnL
+              <div style="display:flex;gap:8px">
+                <div class="topbar-tabs">
+                  <button class="tab-btn active" onclick="setBarMode('trades', this)">Трейды</button>
+                  <button class="tab-btn" onclick="setBarMode('days', this)">Дни</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-container"><canvas id="barChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- LINE CHART -->
+        <div id="atab-line" style="display:none">
+          <div class="dash-card">
+            <div class="dash-card-title">Накопленная кривая PnL
+              <div class="topbar-tabs">
+                <button class="tab-btn active" onclick="setLineMode('trades', this)">Трейды</button>
+                <button class="tab-btn" onclick="setLineMode('days', this)">Дни</button>
+              </div>
+            </div>
+            <div class="chart-container"><canvas id="lineChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- DAILY LOSS -->
+        <div id="atab-dailyloss" style="display:none">
+          <div class="dash-card">
+            <div class="dash-card-title">Daily Loss</div>
+            <div class="daily-loss-input">
+              <span style="font-size:12px;color:var(--text2)">Макс. убыток в день:</span>
+              <input type="number" class="dl-field" id="dailyLossVal" value="200" placeholder="$200">
+              <button class="btn primary" onclick="updateDailyLoss()">Применить</button>
+            </div>
+            <div class="chart-container"><canvas id="dlChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- WEEKLY -->
+        <div id="atab-weekly" style="display:none">
+          <div class="dash-card" style="margin-bottom:16px">
+            <div class="dash-card-title">Недельная статистика</div>
+            <div class="pnl-row">
+              <div class="pnl-stat"><div class="pnl-stat-label">PnL за неделю</div><div class="pnl-stat-val" style="color:var(--green)">+$3,421</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Доходность</div><div class="pnl-stat-val" style="color:var(--green)">+15.4%</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Win Rate</div><div class="pnl-stat-val">66.7%</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Оборот</div><div class="pnl-stat-val">$284,320</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Комиссии</div><div class="pnl-stat-val" style="color:var(--red)">-$142</div></div>
+            </div>
+          </div>
+          <div class="week-grid" id="weekGrid"></div>
+        </div>
+      </div>
+
+      <!-- PROFILE PAGE -->
+      <div id="page-profile" style="display:none">
+        <div class="profile-panel">
+          <div class="profile-section">
+            <div class="profile-section-title">🔑 API ключи / Счета</div>
+            <div id="apiKeysList"></div>
+          </div>
+          <div class="profile-section">
+            <div class="profile-section-title">⚙️ Настройки</div>
+            <div class="profile-row">
+              <div class="pr-label">Тема оформления</div>
+              <div style="display:flex;gap:8px">
+                <button class="btn" onclick="setTheme('dark')" id="btnDark">🌙 Тёмная</button>
+                <button class="btn" onclick="setTheme('light')" id="btnLight">☀️ Светлая</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Часовой пояс</div>
+              <select class="filter-select">
+                <option>UTC+03:00 (Москва)</option>
+                <option>UTC+02:00 (Киев)</option>
+                <option>UTC+00:00</option>
+                <option>UTC+05:00</option>
+              </select>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Высота строк таблицы</div>
+              <div style="display:flex;gap:6px">
+                <button class="btn" onclick="setRowHeight('small')">Малая</button>
+                <button class="btn" onclick="setRowHeight('medium')">Средняя</button>
+                <button class="btn" onclick="setRowHeight('large')">Большая</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Расчёт PnL</div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="checkbox" checked id="inclCommission"> Комиссия
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="checkbox" checked id="inclFunding"> Фандинг
+                </label>
+              </div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Цветной фон ячеек PnL</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Показывать открытые позиции</div>
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Сигналы из Telegram</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="profile-section">
+            <div class="profile-section-title">👤 Аккаунт</div>
+            <div class="profile-row">
+              <div class="pr-label">E-mail</div>
+              <div class="pr-val">alex@trade.pro</div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Telegram</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="pr-val" style="color:var(--green)">✓ @alex_trader</span>
+                <button class="btn" style="font-size:11px;padding:4px 10px">Отвязать</button>
+              </div>
+            </div>
+            <div class="profile-row">
+              <div class="pr-label">Пароль</div>
+              <button class="btn" onclick="document.getElementById('pwdModal').classList.add('open')">Изменить</button>
+            </div>
+            <div class="profile-row" style="border-bottom:none">
+              <div class="pr-label" style="color:var(--red)">Удалить аккаунт</div>
+              <button class="btn" style="border-color:var(--red);color:var(--red)">Удалить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ADD TRADE MODAL -->
+<div class="modal-overlay" id="addTradeModal" onclick="closeModal('addTradeModal', event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">➕ Добавить сделку вручную</div>
+    <div class="modal-field">
+      <label>Символ</label>
+      <input class="modal-input" placeholder="BTCUSDT" id="mt-symbol">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="modal-field">
+        <label>Направление</label>
+        <select class="modal-input" id="mt-dir">
+          <option>Long</option><option>Short</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Основание</label>
+        <select class="modal-input" id="mt-basis">
+          <option>Пробой уровня</option>
+          <option>Откат к поддержке</option>
+          <option>Паттерн</option>
+          <option>Тренд</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Цена входа</label>
+        <input class="modal-input" type="number" placeholder="0.00" id="mt-entry">
+      </div>
+      <div class="modal-field">
+        <label>Цена выхода</label>
+        <input class="modal-input" type="number" placeholder="0.00" id="mt-exit">
+      </div>
+      <div class="modal-field">
+        <label>Объём (USDT)</label>
+        <input class="modal-input" type="number" placeholder="1000" id="mt-vol">
+      </div>
+      <div class="modal-field">
+        <label>Комиссия (USDT)</label>
+        <input class="modal-input" type="number" placeholder="0.50" id="mt-fee">
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Комментарий</label>
+      <textarea class="modal-input" style="height:60px;resize:none" id="mt-comment" placeholder="Заметка к сделке..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addTradeModal')">Отмена</button>
+      <button class="btn primary" onclick="addManualTrade()">Добавить</button>
+    </div>
   </div>
 </div>
 
-<!-- Trade Detail Modal -->
-<div class="modal-overlay" id="modal">
-  <div class="modal-sheet" id="modal-content">
-    <div class="modal-handle"></div>
-    <div id="modal-body"></div>
+<!-- ADD BASIS MODAL -->
+<div class="modal-overlay" id="addBasisModal" onclick="closeModal('addBasisModal', event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">📌 Основания для входа</div>
+    <div id="basisList" style="margin-bottom:14px"></div>
+    <div class="modal-field">
+      <label>Новое основание</label>
+      <input class="modal-input" id="newBasisInput" placeholder="Название основания" onkeydown="if(event.key==='Enter')addBasis()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addBasisModal')">Закрыть</button>
+      <button class="btn primary" onclick="addBasis()">Добавить</button>
+    </div>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+<!-- PWD MODAL -->
+<div class="modal-overlay" id="pwdModal" onclick="closeModal('pwdModal', event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">🔐 Изменить пароль</div>
+    <div class="modal-field"><label>Текущий пароль</label><input type="password" class="modal-input"></div>
+    <div class="modal-field"><label>Новый пароль</label><input type="password" class="modal-input"></div>
+    <div class="modal-field"><label>Повторите пароль</label><input type="password" class="modal-input"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('pwdModal')">Отмена</button>
+      <button class="btn primary">Изменить</button>
+    </div>
+  </div>
+</div>
 
 <script>
-/* ═══════════════════════════════════════
-   TELEGRAM MINI APP INIT
-═══════════════════════════════════════ */
-const tg = window.Telegram?.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
-  tg.setHeaderColor('#161b27');
-  tg.setBackgroundColor('#0d1117');
-}
-
-/* ═══════════════════════════════════════
-   STATE
-═══════════════════════════════════════ */
-const state = {
-  apiKey:    localStorage.getItem('td_key')    || '',
-  apiSecret: localStorage.getItem('td_secret') || '',
-  accType:   localStorage.getItem('td_acc')    || 'UNIFIED',
-  screen:    'dash',
-  days:      30,
-  loading:   false,
-  data:      null,   // processed data
-  rawPnl:    [],     // raw closed pnl list
-  execMap:   {},     // symbol -> executions
+// ===================== DATA =====================
+const COINS = {
+  BTC: {color:'#f7931a', icon:'₿'},
+  ETH: {color:'#627eea', icon:'Ξ'},
+  SOL: {color:'#9945ff', icon:'◎'},
+  BNB: {color:'#f0b90b', icon:'⬡'},
+  DOGE: {color:'#c2a633', icon:'Ð'},
+  XRP: {color:'#346aa9', icon:'✕'},
+  ADA: {color:'#0033ad', icon:'₳'},
+  AVAX: {color:'#e84142', icon:'▲'},
 };
 
-/* ═══════════════════════════════════════
-   BYBIT TESTNET CLIENT
-═══════════════════════════════════════ */
-const BASE = 'https://api-testnet.bybit.com';
+let allBases = ['Пробой уровня', 'Откат к поддержке', 'Паттерн', 'Тренд', 'Дивергенция', 'Объёмный импульс'];
+let sortField = 'pnl', sortDir = -1;
+let filterFav = false, filterDir = null, filterSymbol = '', filterBasis = '';
 
-async function hmac(secret, msg) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(secret),
-    {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(msg));
-  return [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
+let trades = [
+  {id:1, time:'2025-03-29 14:32', symbol:'BTCUSDT', dir:'Long', entry:67420.5, exit:68150.0, vol:5000, qty:0.074, fee:3.50, funding:0.80, basis:'Пробой уровня', comment:'Сильный пробой дневного уровня', fav:true, pnl:0, pnlPct:0},
+  {id:2, time:'2025-03-29 11:05', symbol:'ETHUSDT', dir:'Short', entry:3820.0, exit:3755.5, vol:4000, qty:1.05, fee:2.80, funding:0.50, basis:'Паттерн', comment:'Двойная вершина на 4H', fav:false, pnl:0, pnlPct:0},
+  {id:3, time:'2025-03-28 18:44', symbol:'SOLUSDT', dir:'Long', entry:182.5, exit:175.2, vol:3000, qty:16.4, fee:2.10, funding:1.20, basis:'Откат к поддержке', comment:'Ложный пробой, стоп', fav:false, pnl:0, pnlPct:0},
+  {id:4, time:'2025-03-28 10:15', symbol:'BNBUSDT', dir:'Long', entry:598.0, exit:612.5, vol:3500, qty:5.85, fee:2.45, funding:0.30, basis:'Тренд', comment:'Следование тренду на 1H', fav:true, pnl:0, pnlPct:0},
+  {id:5, time:'2025-03-27 20:30', symbol:'BTCUSDT', dir:'Short', entry:68900.0, exit:67800.0, vol:8000, qty:0.116, fee:5.60, funding:2.10, basis:'Дивергенция', comment:'RSI дивергенция + уровень', fav:true, pnl:0, pnlPct:0},
+  {id:6, time:'2025-03-27 15:20', symbol:'XRPUSDT', dir:'Long', entry:0.5820, exit:0.6105, vol:2000, qty:3436, fee:1.40, funding:0.20, basis:'Объёмный импульс', comment:'Всплеск объёма на поддержке', fav:false, pnl:0, pnlPct:0},
+  {id:7, time:'2025-03-26 09:10', symbol:'AVAXUSDT', dir:'Short', entry:38.90, exit:36.50, vol:2500, qty:64.3, fee:1.75, funding:0.45, basis:'Паттерн', comment:'Голова и плечи', fav:false, pnl:0, pnlPct:0},
+  {id:8, time:'2025-03-25 22:05', symbol:'DOGEUSDT', dir:'Long', entry:0.1645, exit:0.1720, vol:1500, qty:9118, fee:1.05, funding:0.15, basis:'Тренд', comment:'Трендовый откат', fav:false, pnl:0, pnlPct:0},
+  {id:9, time:'2025-03-25 14:55', symbol:'ETHUSDT', dir:'Long', entry:3650.0, exit:3780.0, vol:5500, qty:1.51, fee:3.85, funding:1.00, basis:'Откат к поддержке', comment:'Ключевой уровень + объём', fav:true, pnl:0, pnlPct:0},
+  {id:10, time:'2025-03-24 11:30', symbol:'ADAUSDT', dir:'Short', entry:0.485, exit:0.462, vol:1800, qty:3711, fee:1.26, funding:0.22, basis:'Дивергенция', comment:'Медвежья дивергенция', fav:false, pnl:0, pnlPct:0},
+];
 
-async function bybitGet(path, params = {}) {
-  const ts  = Date.now().toString();
-  const rw  = '5000';
-  const qs  = new URLSearchParams(params).toString();
-  const pre = ts + state.apiKey + rw + qs;
-  const sig = await hmac(state.apiSecret, pre);
-  const res = await fetch(`${BASE}${path}?${qs}`, {
-    headers: {
-      'X-BAPI-API-KEY':       state.apiKey,
-      'X-BAPI-SIGN':          sig,
-      'X-BAPI-TIMESTAMP':     ts,
-      'X-BAPI-RECV-WINDOW':   rw,
-      'X-BAPI-SIGN-TYPE':     '2',
-    }
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.retCode !== 0) throw new Error(json.retMsg || 'API Error');
-  return json.result;
-}
+// Calculate PnL
+trades.forEach(t => {
+  const multiplier = t.dir === 'Long' ? 1 : -1;
+  const rawPnl = multiplier * (t.exit - t.entry) * t.qty;
+  t.pnl = rawPnl - t.fee - t.funding;
+  t.pnlPct = (t.pnl / t.vol) * 100;
+});
 
-async function fetchClosedPnl(days) {
-  const CHUNK = 6 * 86400000; // 6 days per chunk (safe margin under 7-day limit)
-  const totalEnd   = Date.now();
-  const totalStart = totalEnd - days * 86400000;
+const apiKeys = [
+  {name:'Binance Main', exchange:'Binance', key:'3Wu5z***', date:'2024-11-12', active:true},
+  {name:'Bybit Futures', exchange:'Bybit', key:'aB9xk***', date:'2024-12-01', active:true},
+  {name:'OKX Demo', exchange:'OKX', key:'7cPmR***', date:'2025-01-15', active:false},
+];
 
-  // Build list of [start, end] chunks
-  const chunks = [];
-  let chunkEnd = totalEnd;
-  while (chunkEnd > totalStart) {
-    const chunkStart = Math.max(chunkEnd - CHUNK, totalStart);
-    chunks.push([chunkStart, chunkEnd]);
-    chunkEnd = chunkStart;
+// Sub-deals per trade (simulated)
+function getSubDeals(trade) {
+  const n = Math.floor(Math.random()*2)+2;
+  const deals = [];
+  for(let i=0;i<n;i++){
+    deals.push({
+      time: trade.time,
+      dir: i % 2 === 0 ? trade.dir : (trade.dir === 'Long' ? 'Sell' : 'Buy'),
+      price: i === 0 ? trade.entry : trade.exit,
+      vol: (trade.vol/n).toFixed(2),
+      fee: (trade.fee/n).toFixed(3),
+    });
   }
-
-  let list = [];
-  for (const [start, end] of chunks) {
-    let cursor = '';
-    for (let i = 0; i < 10; i++) {
-      const p = {
-        category:  'linear',
-        startTime: start.toString(),
-        endTime:   end.toString(),
-        limit:     '200',
-      };
-      if (cursor) p.cursor = cursor;
-      const r = await bybitGet('/v5/position/closed-pnl', p);
-      list = list.concat(r.list || []);
-      cursor = r.nextPageCursor || '';
-      if (!cursor || (r.list||[]).length < 200) break;
-    }
-  }
-  return list;
+  return deals;
 }
 
-async function fetchExecutions(symbol, days) {
-  const end   = Date.now();
-  const start = end - days * 86400000;
-  const p = {
-    category:  'linear',
-    symbol:    symbol,
-    startTime: start.toString(),
-    endTime:   end.toString(),
-    limit:     '100',
-  };
-  const r = await bybitGet('/v5/execution/list', p);
-  return r.list || [];
-}
+// ===================== RENDER =====================
+function getCoinKey(symbol) { return symbol.replace('USDT','').replace('PERP',''); }
+function getCoin(symbol) { const k = getCoinKey(symbol); return COINS[k] || {color:'#4f8ef7', icon:'◎'}; }
 
-/* ═══════════════════════════════════════
-   DATA PROCESSING
-═══════════════════════════════════════ */
-function processData(rawList) {
-  if (!rawList.length) return null;
-
-  let totalPnl = 0, winCount = 0, totalCount = 0;
-  let longPnl = 0, shortPnl = 0, longCount = 0, shortCount = 0;
-  let longWin = 0, shortWin = 0;
-  let totalFees = 0, totalTurnover = 0;
-  const bySymbol = {};
-
-  rawList.forEach(t => {
-    const pnl = parseFloat(t.closedPnl) || 0;
-    const side = t.side; // Buy=Long, Sell=Short (side of the closing order? Actually in Bybit: side is the position side)
-    // In Bybit closed PnL: side=Buy means Long position, side=Sell means Short position
-    const qty  = parseFloat(t.closedSize) || 0;
-    const exitVal = parseFloat(t.cumExitValue) || 0;
-    const fee = (parseFloat(t.cumEntryValue) || 0) * 0.0006; // approximate
-
-    totalPnl += pnl;
-    totalCount++;
-    totalTurnover += exitVal;
-    if (pnl > 0) winCount++;
-
-    const isLong = side === 'Buy';
-    if (isLong) { longPnl += pnl; longCount++; if (pnl > 0) longWin++; }
-    else         { shortPnl += pnl; shortCount++; if (pnl > 0) shortWin++; }
-
-    const sym = t.symbol;
-    if (!bySymbol[sym]) bySymbol[sym] = { symbol: sym, pnl: 0, wins: 0, losses: 0, count: 0 };
-    bySymbol[sym].pnl   += pnl;
-    bySymbol[sym].count++;
-    if (pnl > 0) bySymbol[sym].wins++;
-    else bySymbol[sym].losses++;
-  });
-
-  // Sort trades by time desc
-  const sorted = [...rawList].sort((a, b) => parseInt(b.updatedTime) - parseInt(a.updatedTime));
-
-  // Group by week then day
-  const weeks = {};
-  sorted.forEach(t => {
-    const ts  = parseInt(t.updatedTime);
-    const d   = new Date(ts);
-    const dayKey  = toDateKey(d);
-    const weekKey = toWeekKey(d);
-    if (!weeks[weekKey]) weeks[weekKey] = { label: weekRangeLabel(d), days: {}, pnl: 0, wins: 0, total: 0, ts: ts };
-    const w = weeks[weekKey];
-    w.pnl   += parseFloat(t.closedPnl) || 0;
-    w.total++;
-    if ((parseFloat(t.closedPnl) || 0) > 0) w.wins++;
-    if (!w.days[dayKey]) w.days[dayKey] = { label: dayLabel(d), trades: [], pnl: 0, ts: ts };
-    const dd = w.days[dayKey];
-    dd.pnl += parseFloat(t.closedPnl) || 0;
-    dd.trades.push(t);
-  });
-
-  // Sort symbols by abs pnl
-  const symList = Object.values(bySymbol).sort((a,b) => Math.abs(b.pnl) - Math.abs(a.pnl));
-
-  return {
-    totalPnl, winCount, totalCount,
-    longPnl, shortPnl, longCount, shortCount, longWin, shortWin,
-    totalFees, totalTurnover,
-    winRate: totalCount ? Math.round(winCount / totalCount * 100) : 0,
-    longWinRate:  longCount  ? Math.round(longWin  / longCount  * 100) : 0,
-    shortWinRate: shortCount ? Math.round(shortWin / shortCount * 100) : 0,
-    bySymbol: symList,
-    weeks,
-  };
-}
-
-function toDateKey(d) {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-function toWeekKey(d) {
-  const day = d.getDay() || 7;
-  const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
-  return `${mon.getFullYear()}-${mon.getMonth()}-${mon.getDate()}`;
-}
-function weekRangeLabel(d) {
-  const day = d.getDay() || 7;
-  const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
-  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-  return `${fmtDate(mon)} – ${fmtDate(sun)}`;
-}
-function fmtDate(d) {
-  const months = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-  return `${d.getDate()} ${months[d.getMonth()]}`;
-}
-function dayLabel(d) {
-  const days = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-  return `${days[d.getDay()]}, ${fmtDate(d)}`;
-}
-function fmtPnl(v) {
-  const n = parseFloat(v) || 0;
-  return (n >= 0 ? '+' : '') + '$' + Math.abs(n).toFixed(2);
-}
-function fmtUsd(v) { return '$' + (parseFloat(v)||0).toFixed(2); }
-function fmtDur(ms) {
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}с`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}м ${s%60}с`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}ч ${m%60}м`;
-  return `${Math.floor(h/24)}д ${h%24}ч`;
-}
-function pnlClass(v) { return parseFloat(v) >= 0 ? 'pos' : 'neg'; }
-
-/* ═══════════════════════════════════════
-   RENDER — DASHBOARD
-═══════════════════════════════════════ */
-function renderDash() {
-  const el = document.getElementById('dash-inner');
-  if (state.loading) { el.innerHTML = loadingHTML('Загружаем данные…'); return; }
-  if (!state.apiKey) { el.innerHTML = noKeyHTML(); return; }
-  if (!state.data)   { el.innerHTML = emptyHTML();  return; }
-
-  const d = state.data;
-  const pct = d.totalTurnover ? (d.totalPnl / d.totalTurnover * 100).toFixed(2) : '0.00';
-  const isPos = d.totalPnl >= 0;
-
-  // Bar widths for Long/Short
-  const lw = d.longCount + d.shortCount
-    ? Math.round(d.longWin  / (d.longCount + d.shortCount + .001) * 100) : 0;
-  const sw = d.longCount + d.shortCount
-    ? Math.round(d.shortWin / (d.longCount + d.shortCount + .001) * 100) : 0;
-
-  // Max symbol pnl for bar scaling
-  const maxPnl = Math.max(...d.bySymbol.map(s => Math.abs(s.pnl)), 1);
-
-  el.innerHTML = `
-    <div class="date-filter">
-      ${[7,14,30,60,90].map(n =>
-        `<button class="df-btn${state.days===n?' active':''}" data-days="${n}">
-          ${n === 7 ? '7д' : n === 14 ? '14д' : n === 30 ? '30д' : n === 60 ? '2м' : '3м'}
-        </button>`).join('')}
+function renderSummary() {
+  const total = trades.reduce((s,t)=>s+t.pnl,0);
+  const wins = trades.filter(t=>t.pnl>0).length;
+  const wr = ((wins/trades.length)*100).toFixed(1);
+  const totalFee = trades.reduce((s,t)=>s+t.fee+t.funding,0);
+  const totalVol = trades.reduce((s,t)=>s+t.vol,0);
+  const grid = document.getElementById('summaryGrid');
+  grid.innerHTML = `
+    <div class="sum-card">
+      <div class="sum-label">Итого PnL</div>
+      <div class="sum-val ${total>=0?'pos':'neg'}">${total>=0?'+':''}$${total.toFixed(2)}</div>
+      <div class="sum-change ${total>=0?'up':'down'}">За период <span>${total>=0?'+':''}${((total/22000)*100).toFixed(2)}%</span></div>
     </div>
-
-    <div class="stats-hero">
-      <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Итого P&L</div>
-      <div class="hero-pnl ${isPos?'pos':'neg'}">${isPos?'+':''}$${Math.abs(d.totalPnl).toFixed(2)}</div>
-      <div class="hero-badge ${isPos?'':'neg'}">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-          <path d="${isPos?'M5 2l4 6H1z':'M5 8L1 2h8z'}"/>
-        </svg>
-        ${isPos?'+':''}${pct}%
-      </div>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-label">Win Rate</div>
-          <div class="stat-val ${d.winRate>=50?'green':'red'}">${d.winRate}%</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Трейды</div>
-          <div class="stat-val">${d.winCount}/<span style="color:var(--red)">${d.totalCount-d.winCount}</span></div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Оборот</div>
-          <div class="stat-val">$${(d.totalTurnover/1000).toFixed(1)}k</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Всего сделок</div>
-          <div class="stat-val">${d.totalCount}</div>
-        </div>
-      </div>
+    <div class="sum-card">
+      <div class="sum-label">Win Rate</div>
+      <div class="sum-val" style="color:var(--accent)">${wr}%</div>
+      <div class="sum-change">Побед <span>${wins}</span> из ${trades.length}</div>
     </div>
-
-    <div class="ls-row">
-      <div class="ls-card">
-        <div class="ls-title">Short <span class="ls-count">${d.shortCount}</span></div>
-        <div class="ls-pnl ${pnlClass(d.shortPnl)}">${fmtPnl(d.shortPnl)}</div>
-        <div style="font-size:10px;color:var(--text3)">${d.shortWinRate}% win</div>
-        <div class="ls-bar-row">
-          <div class="ls-bar-green" style="width:${d.shortWinRate}%"></div>
-          <div class="ls-bar-red"   style="width:${100-d.shortWinRate}%"></div>
-        </div>
-      </div>
-      <div class="ls-card">
-        <div class="ls-title">Long <span class="ls-count">${d.longCount}</span></div>
-        <div class="ls-pnl ${pnlClass(d.longPnl)}">${fmtPnl(d.longPnl)}</div>
-        <div style="font-size:10px;color:var(--text3)">${d.longWinRate}% win</div>
-        <div class="ls-bar-row">
-          <div class="ls-bar-green" style="width:${d.longWinRate}%"></div>
-          <div class="ls-bar-red"   style="width:${100-d.longWinRate}%"></div>
-        </div>
-      </div>
+    <div class="sum-card">
+      <div class="sum-label">Комиссии</div>
+      <div class="sum-val neg">-$${totalFee.toFixed(2)}</div>
+      <div class="sum-change">Оборот <span>$${(totalVol/1000).toFixed(0)}K</span></div>
     </div>
-
-    <div class="sec-header">
-      <div class="sec-title">По символам</div>
-      <div class="chip">${d.bySymbol.length} монет</div>
-    </div>
-    <div class="sym-list">
-      ${d.bySymbol.slice(0,10).map(s => {
-        const isP = s.pnl >= 0;
-        const wBar = Math.round(s.wins / (s.count || 1) * 100);
-        const pBar = Math.round(Math.abs(s.pnl) / maxPnl * 100);
-        return `<div class="sym-row">
-          <div>
-            <div class="sym-name">${s.symbol.replace('USDT','')}<span style="color:var(--text3);font-size:10px">USDT</span></div>
-            <div class="chip" style="margin-top:2px">${s.count}</div>
-          </div>
-          <div class="sym-bars">
-            <div class="sym-bar-row">
-              <div style="height:5px;background:var(--green);border-radius:3px;width:${wBar}%"></div>
-              <div style="height:5px;background:var(--red);border-radius:3px;width:${100-wBar}%"></div>
-            </div>
-            <div class="sym-bar-row">
-              <div style="height:3px;background:${isP?'var(--green)':'var(--red)'};border-radius:3px;width:${pBar}%"></div>
-            </div>
-          </div>
-          <div class="sym-pnl ${pnlClass(s.pnl)}">${fmtPnl(s.pnl)}</div>
-        </div>`;
-      }).join('')}
+    <div class="sum-card">
+      <div class="sum-label">Сделок</div>
+      <div class="sum-val" style="color:var(--text)">${trades.length}</div>
+      <div class="sum-change">Avg PnL <span style="color:${(total/trades.length)>=0?'var(--green)':'var(--red)'}">$${(total/trades.length).toFixed(2)}</span></div>
     </div>
   `;
-
-  // Date filter handlers
-  el.querySelectorAll('.df-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      state.days = parseInt(b.dataset.days);
-      loadData();
-    });
-  });
 }
 
-/* ═══════════════════════════════════════
-   RENDER — TRADES
-═══════════════════════════════════════ */
 function renderTrades() {
-  const el = document.getElementById('trades-inner');
-  if (state.loading) { el.innerHTML = loadingHTML('Загружаем трейды…'); return; }
-  if (!state.apiKey) { el.innerHTML = noKeyHTML(); return; }
-  if (!state.data)   { el.innerHTML = emptyHTML();  return; }
-
-  const weeks = state.data.weeks;
-  const wkeys = Object.keys(weeks).sort((a,b) => weeks[b].ts - weeks[a].ts);
-
-  if (!wkeys.length) { el.innerHTML = emptyHTML(); return; }
-
-  el.innerHTML = `
-    <div class="date-filter" id="t-date-filter">
-      ${[7,14,30,60,90].map(n =>
-        `<button class="df-btn${state.days===n?' active':''}" data-days="${n}">
-          ${n===7?'7д':n===14?'14д':n===30?'30д':n===60?'2м':'3м'}
-        </button>`).join('')}
-    </div>
-    <div id="weeks-container">
-      ${wkeys.map((wk, wi) => renderWeek(weeks[wk], wi===0)).join('')}
-    </div>
-  `;
-
-  el.querySelectorAll('.df-btn').forEach(b => {
-    b.addEventListener('click', () => { state.days = parseInt(b.dataset.days); loadData(); });
+  let data = [...trades];
+  if(filterFav) data = data.filter(t=>t.fav);
+  if(filterDir) data = data.filter(t=>t.dir === filterDir);
+  if(filterSymbol) data = data.filter(t=>t.symbol === filterSymbol);
+  if(filterBasis) data = data.filter(t=>t.basis === filterBasis);
+  data.sort((a,b)=>{
+    let av = a[sortField==='time'?'time':sortField==='pnl'?'pnl':sortField==='pnlpct'?'pnlPct':sortField];
+    let bv = b[sortField==='time'?'time':sortField==='pnl'?'pnl':sortField==='pnlpct'?'pnlPct':sortField];
+    return (av > bv ? 1 : -1) * sortDir;
   });
 
-  el.querySelectorAll('.week-header').forEach(h => {
-    h.addEventListener('click', () => {
-      const body = h.nextElementSibling;
-      const chev = h.querySelector('.week-chevron');
-      const open = body.style.display !== 'none';
-      body.style.display = open ? 'none' : 'block';
-      chev.classList.toggle('open', !open);
-    });
-  });
+  const body = document.getElementById('tradesBody');
+  if(!data.length){ body.innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">Нет трейдов по выбранным фильтрам</div></div>'; return; }
 
-  el.querySelectorAll('.day-header').forEach(h => {
-    h.addEventListener('click', () => {
-      const body = h.nextElementSibling;
-      const open = body.style.display !== 'none';
-      body.style.display = open ? 'none' : 'block';
-    });
-  });
-
-  el.querySelectorAll('.trade-row').forEach(r => {
-    r.addEventListener('click', () => {
-      const idx = r.dataset.idx;
-      openModal(state.rawPnl[parseInt(idx)]);
-    });
-  });
-}
-
-function renderWeek(w, open=true) {
-  const isPos = w.pnl >= 0;
-  const wr = w.total ? Math.round(w.wins/w.total*100) : 0;
-  const dkeys = Object.keys(w.days).sort((a,b) => w.days[b].ts - w.days[a].ts);
-  return `
-    <div class="week-group">
-      <div class="week-header">
-        <div>
-          <div class="week-label">${w.label}</div>
-          <div class="week-meta">${w.wins}/${w.total} сделок · ${wr}% win</div>
+  body.innerHTML = data.map(t => {
+    const coin = getCoin(t.symbol);
+    const ck = getCoinKey(t.symbol);
+    const subDeals = getSubDeals(t);
+    return `
+    <div class="trade-row" id="row-${t.id}">
+      <div class="row-main trades-grid" onclick="toggleRow(${t.id})">
+        <button class="expand-btn" id="exp-${t.id}">›</button>
+        <div class="cell">
+          <div>
+            <div style="font-weight:600;font-size:12px">${t.time.split(' ')[0]}</div>
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">${t.time.split(' ')[1]}</div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="week-pnl ${pnlClass(w.pnl)}">${fmtPnl(w.pnl)}</div>
-          <svg class="week-chevron ${open?'open':''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
+        <div class="cell">
+          <div class="symbol-pair">
+            <div class="coin-icon" style="background:${coin.color}">${coin.icon}</div>
+            <div>
+              <div class="symbol-name">${ck}</div>
+              <div class="symbol-base">USDT</div>
+            </div>
+          </div>
         </div>
+        <div class="cell"><span class="badge ${t.dir==='Long'?'long':'short'}">${t.dir==='Long'?'▲':'▼'} ${t.dir}</span></div>
+        <div class="cell mono">$${t.entry.toLocaleString('ru', {minimumFractionDigits:2,maximumFractionDigits:4})}</div>
+        <div class="cell mono">$${t.exit.toLocaleString('ru', {minimumFractionDigits:2,maximumFractionDigits:4})}</div>
+        <div class="cell mono ${t.pnl>=0?'pos':'neg'}">${t.pnl>=0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</div>
+        <div class="cell mono ${t.pnlPct>=0?'pos':'neg'}">${t.pnlPct>=0?'+':''}${Math.abs(t.pnlPct).toFixed(2)}%</div>
+        <div class="cell mono" style="color:var(--red)">-$${t.fee.toFixed(2)}</div>
+        <div class="cell"><span class="basis-tag">${t.basis}</span></div>
+        <div class="cell"><span class="fav-star ${t.fav?'active':''}" onclick="event.stopPropagation();toggleFav(${t.id},this)">${t.fav?'★':'☆'}</span></div>
       </div>
-      <div style="display:${open?'block':'none'}">
-        ${dkeys.map(dk => renderDay(w.days[dk])).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderDay(day) {
-  const isPos = day.pnl >= 0;
-  return `
-    <div class="day-group">
-      <div class="day-header">
-        <div class="day-label">${day.label}</div>
-        <div class="day-pnl ${pnlClass(day.pnl)}">${fmtPnl(day.pnl)}</div>
-      </div>
-      <div>
-        ${day.trades.map(t => renderTradeRow(t)).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderTradeRow(t) {
-  const pnl  = parseFloat(t.closedPnl) || 0;
-  const dur  = parseInt(t.updatedTime) - parseInt(t.createdTime);
-  const side = t.side === 'Buy' ? 'Long' : 'Short';
-  const pnlPct = t.cumEntryValue
-    ? (pnl / parseFloat(t.cumEntryValue) * 100).toFixed(2) : '0.00';
-  const globalIdx = state.rawPnl.indexOf(t);
-  const ts   = new Date(parseInt(t.createdTime));
-  const tstr = `${ts.getHours().toString().padStart(2,'0')}:${ts.getMinutes().toString().padStart(2,'0')}:${ts.getSeconds().toString().padStart(2,'0')}`;
-
-  return `
-    <div class="trade-row" data-idx="${globalIdx}">
-      <div>
-        <div class="trade-sym">${t.symbol.replace('USDT','')}<span style="font-size:9px;color:var(--text3)">USDT</span></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:1px">${tstr}</div>
-      </div>
-      <div class="trade-dir ${side.toLowerCase()}">${side}</div>
-      <div class="trade-dur">${fmtDur(dur)}</div>
-      <div>
-        <div class="trade-pnl ${pnlClass(pnl)}">${fmtPnl(pnl)}</div>
-        <div class="trade-pct ${pnlClass(pnl)}">${pnl>=0?'+':''}${pnlPct}%</div>
-      </div>
-    </div>
-  `;
-}
-
-/* ═══════════════════════════════════════
-   TRADE DETAIL MODAL
-═══════════════════════════════════════ */
-let _modalTrade = null;
-let _tvInterval = '30';
-
-function openModal(t) {
-  if (!t) return;
-  _modalTrade = t;
-  _tvInterval = '30';
-
-  const pnl     = parseFloat(t.closedPnl) || 0;
-  const side    = t.side === 'Buy' ? 'Long' : 'Short';
-  const sideDir = t.side === 'Buy' ? 'long' : 'short';
-  const dur     = parseInt(t.updatedTime) - parseInt(t.createdTime);
-  const pnlPct  = t.cumEntryValue
-    ? (pnl / parseFloat(t.cumEntryValue) * 100).toFixed(2) : '0.00';
-  const entryDate = new Date(parseInt(t.createdTime));
-  const exitDate  = new Date(parseInt(t.updatedTime));
-
-  document.getElementById('modal-body').innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-      <div class="modal-sym">${t.symbol}</div>
-      <div class="trade-dir ${sideDir}">${side}</div>
-    </div>
-    <div class="modal-pnl ${pnlClass(pnl)}">${fmtPnl(pnl)} <span style="font-size:16px;color:var(--text2)">(${pnl>=0?'+':''}${pnlPct}%)</span></div>
-
-    <!-- Tabs -->
-    <div class="modal-tabs">
-      <button class="modal-tab active" data-tab="chart">📈 График</button>
-      <button class="modal-tab" data-tab="details">📋 Детали</button>
-      <button class="modal-tab" data-tab="execs">⚡ Сделки</button>
-    </div>
-
-    <!-- TAB: Chart -->
-    <div class="tab-pane active" id="tab-chart">
-      <div class="tv-intervals">
-        ${[['1','1м'],['5','5м'],['15','15м'],['30','30м'],['60','1ч'],['240','4ч'],['D','1д']].map(([val,lbl]) =>
-          `<button class="tv-int-btn${val==='30'?' active':''}" data-int="${val}">${lbl}</button>`
-        ).join('')}
-      </div>
-      <div class="tv-info-row">
-        <span style="color:var(--text2)">Вход</span>
-        <span style="color:var(--green);font-family:var(--mono);font-weight:600">
-          ▲ $${parseFloat(t.avgEntryPrice||0).toFixed(6)} &nbsp; ${fmtDateTime(entryDate)}
-        </span>
-      </div>
-      <div class="tv-info-row">
-        <span style="color:var(--text2)">Выход</span>
-        <span style="color:var(--red);font-family:var(--mono);font-weight:600">
-          ▼ $${parseFloat(t.avgExitPrice||0).toFixed(6)} &nbsp; ${fmtDateTime(exitDate)}
-        </span>
-      </div>
-      <div class="tv-wrap" id="tv-frame-wrap">
-        <div style="height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
-          <div class="spinner"></div>
-          <div style="font-size:11px;color:var(--text3)">Загружаем свечи…</div>
+      <div class="row-expanded" id="exp-content-${t.id}">
+        <div class="expanded-grid">
+          <div class="exp-card">
+            <div class="exp-label">Объём позиции</div>
+            <div class="exp-val">$${t.vol.toLocaleString()}</div>
+          </div>
+          <div class="exp-card">
+            <div class="exp-label">Кол-во</div>
+            <div class="exp-val">${t.qty} ${ck}</div>
+          </div>
+          <div class="exp-card">
+            <div class="exp-label">Фандинг</div>
+            <div class="exp-val neg">-$${t.funding.toFixed(3)}</div>
+          </div>
+          <div class="exp-card">
+            <div class="exp-label">PnL без комиссий</div>
+            <div class="exp-val ${(t.pnl+t.fee+t.funding)>=0?'pos':'neg'}">${(t.pnl+t.fee+t.funding)>=0?'+':''}$${Math.abs(t.pnl+t.fee+t.funding).toFixed(2)}</div>
+          </div>
+          <div class="exp-card">
+            <div class="exp-label">Комиссия</div>
+            <div class="exp-val neg">-$${t.fee.toFixed(3)}</div>
+          </div>
+          <div class="exp-card">
+            <div class="exp-label">Основание</div>
+            <div class="exp-val" style="color:var(--purple)">${t.basis}</div>
+          </div>
+        </div>
+        <div class="sub-deals">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Составляющие сделки</div>
+          <div class="sub-deal-head">
+            <div>Время</div><div>Тип</div><div>Цена</div><div>Объём</div><div>Комиссия</div><div></div><div></div>
+          </div>
+          ${subDeals.map((d,i)=>`
+          <div class="sub-deal">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${t.time}</div>
+            <div><span class="badge ${d.dir==='Long'||d.dir==='Buy'?'long':'short'}">${d.dir}</span></div>
+            <div style="font-family:var(--mono);font-size:11px">$${parseFloat(d.price).toFixed(4)}</div>
+            <div style="font-family:var(--mono);font-size:11px">$${d.vol}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--red)">-$${d.fee}</div>
+            <div></div><div></div>
+          </div>`).join('')}
+        </div>
+        <div class="exp-comment">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Комментарий</div>
+          <textarea class="comment-input" placeholder="Добавьте заметку к трейду...">${t.comment}</textarea>
+        </div>
+        <div class="exp-actions">
+          <button class="btn" onclick="event.stopPropagation()">📊 На графике</button>
+          <button class="btn" onclick="event.stopPropagation()">🔗 Поделиться</button>
+          <button class="btn fav-star ${t.fav?'active':''}" onclick="event.stopPropagation();toggleFav(${t.id},null)" style="padding:7px 12px">${t.fav?'★ В избранном':'☆ В избранное'}</button>
         </div>
       </div>
-      <a class="tv-open-btn" id="tv-open-link" href="${buildTvUrl(t.symbol, '30')}" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-        Открыть в TradingView
-      </a>
-    </div>
-
-    <!-- TAB: Details -->
-    <div class="tab-pane" id="tab-details">
-      <div class="detail-grid">
-        <div class="detail-item">
-          <div class="detail-label">Размер позиции</div>
-          <div class="detail-val">${parseFloat(t.closedSize).toFixed(4)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Длительность</div>
-          <div class="detail-val">${fmtDur(dur)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Вход (avg)</div>
-          <div class="detail-val">$${parseFloat(t.avgEntryPrice||0).toFixed(6)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Выход (avg)</div>
-          <div class="detail-val">$${parseFloat(t.avgExitPrice||0).toFixed(6)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Открытие</div>
-          <div class="detail-val" style="font-size:11px">${fmtDateTime(entryDate)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Закрытие</div>
-          <div class="detail-val" style="font-size:11px">${fmtDateTime(exitDate)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Объём входа</div>
-          <div class="detail-val">$${parseFloat(t.cumEntryValue||0).toFixed(2)}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Объём выхода</div>
-          <div class="detail-val">$${parseFloat(t.cumExitValue||0).toFixed(2)}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: Executions -->
-    <div class="tab-pane" id="tab-execs">
-      <div id="exec-wrap" style="text-align:center;padding:20px;color:var(--text3);font-size:12px">
-        <div class="spinner" style="margin:0 auto 8px"></div>Загружаем…
-      </div>
-    </div>
-
-    <br>
-    <button class="btn secondary" onclick="closeModal()">Закрыть</button>
-  `;
-
-  // Tab switching
-  document.querySelectorAll('.modal-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.modal-tab').forEach(t2 => t2.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-      // Load executions lazily
-      if (tab.dataset.tab === 'execs') loadExecs(t.symbol, t);
-    });
-  });
-
-  // Interval buttons
-  document.querySelectorAll('.tv-int-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tv-int-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      _tvInterval = btn.dataset.int;
-      document.getElementById('tv-open-link').href = buildTvUrl(t.symbol, _tvInterval);
-      drawChart(t, _tvInterval);
-    });
-  });
-
-  document.getElementById('modal').classList.add('open');
-  // Draw chart immediately after modal opens
-  setTimeout(() => drawChart(t, _tvInterval), 50);
-}
-
-function buildTvUrl(symbol, interval) {
-  return `https://www.tradingview.com/chart/?symbol=BYBIT:${symbol}&interval=${interval}`;
-}
-
-/* ─── Fetch Bybit Klines ─── */
-async function fetchKlines(symbol, interval, entryTs, exitTs) {
-  // Add padding around trade: 20 candles before entry, 20 after exit
-  const intervalMs = intervalToMs(interval);
-  const from = Math.floor((entryTs - intervalMs * 25) / 1000);
-  const to   = Math.floor((exitTs  + intervalMs * 25) / 1000);
-  const limit = Math.min(Math.ceil((to - from) / (intervalMs / 1000)) + 10, 200);
-
-  const p = {
-    category: 'linear',
-    symbol:   symbol,
-    interval: interval,
-    start:    (from * 1000).toString(),
-    end:      (to   * 1000).toString(),
-    limit:    limit.toString(),
-  };
-  const r = await bybitGet('/v5/market/kline', p);
-  // Bybit returns [startTime, open, high, low, close, volume, turnover]
-  return (r.list || []).map(c => ({
-    time:  Math.floor(parseInt(c[0]) / 1000),
-    open:  parseFloat(c[1]),
-    high:  parseFloat(c[2]),
-    low:   parseFloat(c[3]),
-    close: parseFloat(c[4]),
-    volume: parseFloat(c[5]),
-  })).sort((a, b) => a.time - b.time);
-}
-
-function intervalToMs(iv) {
-  const map = { '1':60000,'3':180000,'5':300000,'15':900000,'30':1800000,
-                '60':3600000,'120':7200000,'240':14400000,'360':21600000,
-                '720':43200000,'D':86400000,'W':604800000 };
-  return map[iv] || 1800000;
-}
-
-/* ─── Draw Chart with Lightweight Charts ─── */
-async function drawChart(trade, interval) {
-  const wrap = document.getElementById('tv-frame-wrap');
-  if (!wrap) return;
-  wrap.innerHTML = `<div style="height:320px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px">
-    <div class="spinner"></div>
-    <div style="font-size:11px;color:var(--text3)">Загружаем свечи…</div>
-  </div>`;
-
-  const entryTs = parseInt(trade.createdTime);
-  const exitTs  = parseInt(trade.updatedTime);
-
-  try {
-    const klines = await fetchKlines(trade.symbol, interval, entryTs, exitTs);
-    if (!klines.length) {
-      wrap.innerHTML = `<div style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px">Нет данных свечей</div>`;
-      return;
-    }
-
-    wrap.innerHTML = `<div id="lw-chart" style="height:320px;border-radius:8px;overflow:hidden"></div>`;
-
-    const LWC = window.LightweightCharts;
-    const chart = LWC.createChart(document.getElementById('lw-chart'), {
-      width:  wrap.clientWidth || 340,
-      height: 320,
-      layout: {
-        background:   { color: '#0d1117' },
-        textColor:    '#8b96b0',
-        fontSize:     11,
-        fontFamily:   'JetBrains Mono, monospace',
-      },
-      grid: {
-        vertLines: { color: '#1e2535' },
-        horzLines: { color: '#1e2535' },
-      },
-      crosshair: {
-        mode: LWC.CrosshairMode.Normal,
-      },
-      rightPriceScale: {
-        borderColor: '#1e2d45',
-      },
-      timeScale: {
-        borderColor:     '#1e2d45',
-        timeVisible:     true,
-        secondsVisible:  false,
-      },
-      handleScroll:   true,
-      handleScale:    true,
-    });
-
-    const candleSeries = chart.addCandlestickSeries({
-      upColor:          '#22c55e',
-      downColor:        '#ef4444',
-      borderUpColor:    '#22c55e',
-      borderDownColor:  '#ef4444',
-      wickUpColor:      '#22c55e',
-      wickDownColor:    '#ef4444',
-    });
-
-    candleSeries.setData(klines);
-
-    // ─── Entry marker ───
-    const entryTimeSec = Math.floor(entryTs / 1000);
-    const exitTimeSec  = Math.floor(exitTs  / 1000);
-    const ivMs = intervalToMs(interval);
-
-    // Snap to nearest candle open time
-    const snapToCandle = (ts) => {
-      const nearest = klines.reduce((best, c) =>
-        Math.abs(c.time - ts) < Math.abs(best.time - ts) ? c : best, klines[0]);
-      return nearest;
-    };
-
-    const entryCandle = snapToCandle(entryTimeSec);
-    const exitCandle  = snapToCandle(exitTimeSec);
-    const isLong      = trade.side === 'Buy';
-    const entryPrice  = parseFloat(trade.avgEntryPrice) || entryCandle.low;
-    const exitPrice   = parseFloat(trade.avgExitPrice)  || exitCandle.high;
-
-    candleSeries.setMarkers([
-      {
-        time:     entryCandle.time,
-        position: isLong ? 'belowBar' : 'aboveBar',
-        color:    '#22c55e',
-        shape:    isLong ? 'arrowUp' : 'arrowDown',
-        text:     `Вход $${entryPrice.toFixed(5)}`,
-        size:     2,
-      },
-      {
-        time:     exitCandle.time,
-        position: isLong ? 'aboveBar' : 'belowBar',
-        color:    '#ef4444',
-        shape:    isLong ? 'arrowDown' : 'arrowUp',
-        text:     `Выход $${exitPrice.toFixed(5)}`,
-        size:     2,
-      },
-    ]);
-
-    // Add entry price line
-    candleSeries.createPriceLine({
-      price:     entryPrice,
-      color:     '#22c55e',
-      lineWidth: 1,
-      lineStyle: LWC.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'Вход',
-    });
-    // Add exit price line
-    candleSeries.createPriceLine({
-      price:     exitPrice,
-      color:     '#ef4444',
-      lineWidth: 1,
-      lineStyle: LWC.LineStyle.Dashed,
-      axisLabelVisible: true,
-      title: 'Выход',
-    });
-
-    // Fit visible range around trade
-    chart.timeScale().setVisibleRange({
-      from: Math.floor(entryTimeSec - ivMs * 10 / 1000),
-      to:   Math.floor(exitTimeSec  + ivMs * 10 / 1000),
-    });
-
-    // Resize observer
-    const ro = new ResizeObserver(() => {
-      chart.applyOptions({ width: wrap.clientWidth });
-    });
-    ro.observe(wrap);
-
-  } catch (err) {
-    wrap.innerHTML = `<div style="height:160px;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:12px;padding:16px;text-align:center">
-      Ошибка загрузки: ${err.message}
     </div>`;
-  }
+  }).join('');
 }
 
-async function loadExecs(symbol, t) {
-  const wrap = document.getElementById('exec-wrap');
-  if (!wrap) return;
-  try {
-    const execs = await fetchExecutions(symbol, state.days);
-    // Filter to this trade timeframe approximately
-    const entry = parseInt(t.createdTime) - 60000;
-    const exit  = parseInt(t.updatedTime) + 60000;
-    const rel   = execs.filter(e => {
-      const et = parseInt(e.execTime);
-      return et >= entry && et <= exit;
-    }).slice(0, 20);
-
-    if (!rel.length) {
-      wrap.innerHTML = '<div style="color:var(--text3);font-size:12px">Нет детальных данных</div>';
-      return;
-    }
-    wrap.innerHTML = `
-      <div style="overflow-x:auto">
-        <table class="exec-table">
-          <thead><tr>
-            <th>Время</th>
-            <th>Сторона</th>
-            <th>Цена</th>
-            <th>Кол-во</th>
-            <th>Комис.</th>
-          </tr></thead>
-          <tbody>
-            ${rel.map(e => {
-              const isBuy = e.side === 'Buy';
-              const et = new Date(parseInt(e.execTime));
-              return `<tr>
-                <td>${et.getHours().toString().padStart(2,'0')}:${et.getMinutes().toString().padStart(2,'0')}:${et.getSeconds().toString().padStart(2,'0')}</td>
-                <td class="${isBuy?'exec-buy':'exec-sell'}">${isBuy?'Покупка':'Продажа'}</td>
-                <td>$${parseFloat(e.execPrice).toFixed(6)}</td>
-                <td>${parseFloat(e.execQty).toFixed(2)}</td>
-                <td style="color:var(--text2)">$${parseFloat(e.execFee||0).toFixed(4)}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  } catch(err) {
-    if (wrap) wrap.innerHTML = `<div style="color:var(--text3);font-size:12px">Не удалось загрузить: ${err.message}</div>`;
-  }
-}
-
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-}
-
-function fmtDateTime(d) {
-  return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-}
-
-/* ═══════════════════════════════════════
-   RENDER — SETTINGS
-═══════════════════════════════════════ */
-function renderSettings() {
-  document.getElementById('inp-key').value    = state.apiKey;
-  document.getElementById('inp-secret').value = state.apiSecret ? '••••••••' : '';
-  document.getElementById('inp-acc').value    = state.accType;
-}
-
-/* ═══════════════════════════════════════
-   HELPERS: EMPTY STATES
-═══════════════════════════════════════ */
-function loadingHTML(msg='Загружаем…') {
-  return `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">${msg}</div></div>`;
-}
-function noKeyHTML() {
-  return `<div class="empty-wrap">
-    <div class="empty-icon">🔑</div>
-    <div class="empty-text">Добавьте API ключ Bybit Testnet<br>во вкладке <strong>Настройки</strong></div>
-  </div>`;
-}
-function emptyHTML() {
-  return `<div class="empty-wrap">
-    <div class="empty-icon">📊</div>
-    <div class="empty-text">Нет данных за выбранный период.<br>Попробуйте другой диапазон дат.</div>
-  </div>`;
-}
-
-/* ═══════════════════════════════════════
-   TOAST
-═══════════════════════════════════════ */
-function showToast(msg, ok=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className   = 'toast show' + (ok ? ' success-toast' : '');
-  setTimeout(() => { t.className = 'toast'; }, 3500);
-}
-
-/* ═══════════════════════════════════════
-   DATA LOADING
-═══════════════════════════════════════ */
-async function loadData() {
-  if (!state.apiKey || !state.apiSecret) {
-    renderCurrentScreen();
-    return;
-  }
-  state.loading = true;
-  state.data    = null;
-  renderCurrentScreen();
-
-  try {
-    const raw = await fetchClosedPnl(state.days);
-    state.rawPnl = raw;
-    state.data   = processData(raw);
-  } catch (err) {
-    showToast('Ошибка API: ' + err.message);
-    state.data = null;
-  } finally {
-    state.loading = false;
-    renderCurrentScreen();
-  }
-}
-
-function renderCurrentScreen() {
-  if (state.screen === 'dash')     renderDash();
-  if (state.screen === 'trades')   renderTrades();
-  if (state.screen === 'settings') renderSettings();
-}
-
-/* ═══════════════════════════════════════
-   NAVIGATION
-═══════════════════════════════════════ */
-function switchScreen(name) {
-  state.screen = name;
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(`screen-${name}`).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.screen === name);
+function renderDeals() {
+  const allDeals = [];
+  trades.forEach(t => {
+    const sub = getSubDeals(t);
+    sub.forEach((d,i) => allDeals.push({...d, tradeId: t.id, symbol: t.symbol, time: t.time}));
   });
-  document.getElementById('btn-refresh').style.display = (name !== 'settings') ? 'flex' : 'none';
-  document.getElementById('content').scrollTop = 0;
-  renderCurrentScreen();
+  const body = document.getElementById('dealsBody');
+  body.innerHTML = allDeals.map(d => {
+    const coin = getCoin(d.symbol);
+    const ck = getCoinKey(d.symbol);
+    return `
+    <div class="tx-row" style="grid-template-columns:140px 90px 70px 100px 100px 80px 70px 1fr">
+      <div style="font-family:var(--mono);font-size:11px">${d.time}</div>
+      <div>
+        <div style="font-weight:700;font-size:12px">${ck}USDT</div>
+      </div>
+      <div><span class="badge ${d.dir==='Long'||d.dir==='Buy'?'long':'short'}">${d.dir==='Long'||d.dir==='Buy'?'▲ Buy':'▼ Sell'}</span></div>
+      <div style="font-family:var(--mono);font-size:12px">$${parseFloat(d.price).toFixed(4)}</div>
+      <div style="font-family:var(--mono);font-size:12px">$${d.vol}</div>
+      <div style="font-family:var(--mono);font-size:12px">${(parseFloat(d.vol)/parseFloat(d.price)).toFixed(4)}</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--red)">-$${d.fee}</div>
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">#${d.tradeId.toString().padStart(6,'0')}</div>
+    </div>`;
+  }).join('');
 }
 
-/* ═══════════════════════════════════════
-   EVENT LISTENERS
-═══════════════════════════════════════ */
-document.querySelectorAll('.nav-btn').forEach(b => {
-  b.addEventListener('click', () => switchScreen(b.dataset.screen));
-});
+function renderTransactions() {
+  const txs = [
+    {date:'2025-03-29 14:35', type:'fee', symbol:'BTCUSDT', amount:-3.50, balance:22487.23, desc:'Комиссия за сделку #000001'},
+    {date:'2025-03-29 11:08', type:'fee', symbol:'ETHUSDT', amount:-2.80, balance:22490.73, desc:'Комиссия за сделку #000002'},
+    {date:'2025-03-28 00:00', type:'funding', symbol:'SOLUSDT', amount:-1.20, balance:22493.53, desc:'Фандинг SOLUSDT'},
+    {date:'2025-03-28 00:00', type:'funding', symbol:'BNBUSDT', amount:-0.30, balance:22494.73, desc:'Фандинг BNBUSDT'},
+    {date:'2025-03-27 20:33', type:'fee', symbol:'BTCUSDT', amount:-5.60, balance:22495.03, desc:'Комиссия за сделку #000005'},
+    {date:'2025-03-26 00:00', type:'referal', symbol:'—', amount:+8.50, balance:22500.63, desc:'Реферальные выплаты'},
+    {date:'2025-03-25 00:00', type:'funding', symbol:'ETHUSDT', amount:+1.00, balance:22492.13, desc:'Фандинг ETHUSDT (входящий)'},
+  ];
+  const body = document.getElementById('txBody');
+  body.innerHTML = txs.map(tx => `
+    <div class="tx-row">
+      <div style="font-family:var(--mono);font-size:11px">${tx.date}</div>
+      <div><span class="tx-type ${tx.type==='fee'?'tx-fee':tx.type==='funding'?'tx-funding':'tx-referal'}">${tx.type==='fee'?'Комиссия':tx.type==='funding'?'Фандинг':'Реферальные'}</span></div>
+      <div style="font-weight:600;font-size:12px">${tx.symbol}</div>
+      <div style="font-family:var(--mono);font-size:12px;color:${tx.amount>=0?'var(--green)':'var(--red)'}">${tx.amount>=0?'+':''}$${Math.abs(tx.amount).toFixed(2)}</div>
+      <div style="font-family:var(--mono);font-size:12px">$${tx.balance.toFixed(2)}</div>
+      <div style="font-size:11px;color:var(--text2)">${tx.desc}</div>
+    </div>
+  `).join('');
+}
 
-document.getElementById('btn-refresh').addEventListener('click', () => loadData());
+function renderAnalytics() {
+  renderSymbolAnalytics();
+  renderLsAnalytics();
+  renderBasisAnalytics();
+  renderTop5();
+  renderWeekly();
+  renderBarChart();
+  renderLineChart();
+  renderDlChart();
+}
 
-document.getElementById('btn-save').addEventListener('click', () => {
-  const key    = document.getElementById('inp-key').value.trim();
-  const secret = document.getElementById('inp-secret').value.trim();
-  const acc    = document.getElementById('inp-acc').value;
+function renderSymbolAnalytics() {
+  const bySymbol = {};
+  trades.forEach(t => {
+    if(!bySymbol[t.symbol]) bySymbol[t.symbol] = {pnl:0, wins:0, total:0};
+    bySymbol[t.symbol].pnl += t.pnl;
+    bySymbol[t.symbol].total++;
+    if(t.pnl > 0) bySymbol[t.symbol].wins++;
+  });
+  const sorted = Object.entries(bySymbol).sort((a,b)=>Math.abs(b[1].pnl)-Math.abs(a[1].pnl));
+  const maxAbs = Math.max(...sorted.map(e=>Math.abs(e[1].pnl)));
+  document.getElementById('symbolAnalytics').innerHTML = sorted.map(([sym, d]) => {
+    const ck = getCoinKey(sym);
+    const coin = getCoin(sym);
+    const pct = (Math.abs(d.pnl)/maxAbs)*100;
+    return `<div class="symbol-row">
+      <div class="sym-name" style="display:flex;align-items:center;gap:6px">
+        <div class="coin-icon" style="background:${coin.color};width:18px;height:18px;font-size:9px">${coin.icon}</div>
+        ${ck}
+      </div>
+      <div class="sym-bar-wrap">
+        <div class="${d.pnl>=0?'sym-bar-pos':'sym-bar-neg'}" style="width:${pct}%"></div>
+      </div>
+      <div class="sym-pnl ${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?'+':''}$${Math.abs(d.pnl).toFixed(0)}</div>
+    </div>`;
+  }).join('');
+}
 
-  if (!key || !secret || secret === '••••••••') {
-    showToast('Введите API Key и Secret');
-    return;
+function renderLsAnalytics() {
+  const ls = {Long:{wins:0,total:0,pnl:0}, Short:{wins:0,total:0,pnl:0}};
+  trades.forEach(t => {
+    ls[t.dir].total++;
+    ls[t.dir].pnl += t.pnl;
+    if(t.pnl>0) ls[t.dir].wins++;
+  });
+  const totalTrades = trades.length;
+  document.getElementById('lsAnalytics').innerHTML = ['Long','Short'].map(dir => {
+    const d = ls[dir];
+    const totalPct = (d.total/totalTrades)*100;
+    const winPct = d.total > 0 ? (d.wins/d.total)*100 : 0;
+    return `<div class="ls-row">
+      <div class="ls-label" style="color:${dir==='Long'?'var(--green)':'var(--red)'}">${dir==='Long'?'▲':'▼'} ${dir}</div>
+      <div class="ls-bar-track">
+        <div class="${dir==='Long'?'ls-pos-bar':'ls-neg-bar'}" style="width:${winPct}%"></div>
+      </div>
+      <div class="ls-stats">${d.wins}W / ${d.total-d.wins}L</div>
+    </div>`;
+  }).join('');
+}
+
+function renderBasisAnalytics() {
+  const byBasis = {};
+  trades.forEach(t => {
+    if(!byBasis[t.basis]) byBasis[t.basis] = {pnl:0, wins:0, total:0};
+    byBasis[t.basis].pnl += t.pnl;
+    byBasis[t.basis].total++;
+    if(t.pnl>0) byBasis[t.basis].wins++;
+  });
+  const sorted = Object.entries(byBasis).sort((a,b)=>b[1].pnl-a[1].pnl);
+  const maxAbs = Math.max(...sorted.map(e=>Math.abs(e[1].pnl)));
+  document.getElementById('basisAnalytics').innerHTML = sorted.map(([basis, d]) => {
+    const pct = (Math.abs(d.pnl)/maxAbs)*100;
+    return `<div class="symbol-row">
+      <div class="sym-name" style="font-size:11px;width:100px">${basis}</div>
+      <div class="sym-bar-wrap"><div class="${d.pnl>=0?'sym-bar-pos':'sym-bar-neg'}" style="width:${pct}%"></div></div>
+      <div class="sym-pnl ${d.pnl>=0?'pos':'neg'}">${d.pnl>=0?'+':''}$${Math.abs(d.pnl).toFixed(0)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTop5() {
+  const sorted = [...trades].sort((a,b)=>b.pnl-a.pnl).slice(0,5);
+  const MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  document.getElementById('top5body').innerHTML = sorted.map((t,i) => {
+    const ck = getCoinKey(t.symbol);
+    const coin = getCoin(t.symbol);
+    const duration = Math.floor(Math.random()*120)+5;
+    return `<div class="top5-row">
+      <div class="top5-rank ${i===0?'gold':''}">${MEDALS[i]}</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="coin-icon" style="background:${coin.color};width:20px;height:20px;font-size:10px">${coin.icon}</div>
+          <div>
+            <div style="font-weight:700;font-size:13px">${ck}USDT</div>
+            <div style="font-size:10px;color:var(--text3)">${t.time}</div>
+          </div>
+        </div>
+      </div>
+      <div><span class="badge ${t.dir==='Long'?'long':'short'}">${t.dir==='Long'?'▲':'▼'} ${t.dir}</span></div>
+      <div style="font-size:12px;color:var(--text2)">${duration}м</div>
+      <div class="cell mono pos">+$${t.pnl.toFixed(2)}</div>
+      <div class="cell mono pos">+${t.pnlPct.toFixed(2)}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderWeekly() {
+  const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const dayData = [
+    {pnl:842.30, trades:4, winRate:75, long:3, short:1, vol:15200, fee:23.5},
+    {pnl:-312.50, trades:3, winRate:33, long:1, short:2, vol:11800, fee:18.2},
+    {pnl:1205.80, trades:5, winRate:80, long:4, short:1, vol:22400, fee:31.7},
+    {pnl:650.20, trades:4, winRate:75, long:3, short:1, vol:17600, fee:24.8},
+    {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0},
+    {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0},
+    {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0},
+  ];
+  document.getElementById('weekGrid').innerHTML = days.map((d,i) => {
+    const dd = dayData[i];
+    const isToday = i === 3;
+    if(dd.pnl === null) return `
+      <div class="day-card">
+        <div class="day-name">${d}</div>
+        <div class="day-pnl neutral">—</div>
+        <div class="day-stats" style="color:var(--text3)">Нет торгов</div>
+      </div>`;
+    return `
+      <div class="day-card ${isToday?'today':''}">
+        <div class="day-name">${d}${isToday?' 📍':''}</div>
+        <div class="day-pnl ${dd.pnl>=0?'pos':'neg'}">${dd.pnl>=0?'+':''}$${Math.abs(dd.pnl).toFixed(0)}</div>
+        <div class="day-stats">
+          Win: ${dd.winRate}%<br>
+          Сделок: ${dd.trades}<br>
+          Long/Short: ${dd.long}/${dd.short}<br>
+          Оборот: $${(dd.vol/1000).toFixed(1)}K<br>
+          Комм: -$${dd.fee.toFixed(1)}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+let barChartInst = null, lineChartInst = null, dlChartInst = null;
+
+function renderBarChart(mode='trades') {
+  const ctx = document.getElementById('barChart');
+  if(!ctx) return;
+  if(barChartInst) barChartInst.destroy();
+  const data = mode === 'trades' ? trades : aggregateByDay();
+  const labels = mode === 'trades' ? data.map(t=>t.time.split(' ')[0]+' '+getCoinKey(t.symbol)) : data.map(d=>d.date);
+  const values = mode === 'trades' ? data.map(t=>t.pnl) : data.map(d=>d.pnl);
+  barChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map(v => v >= 0 ? 'rgba(34,209,160,0.7)' : 'rgba(247,81,106,0.7)'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: chartOptions('bar')
+  });
+}
+
+function renderLineChart(mode='trades') {
+  const ctx = document.getElementById('lineChart');
+  if(!ctx) return;
+  if(lineChartInst) lineChartInst.destroy();
+  const data = mode === 'trades' ? trades : aggregateByDay();
+  const labels = mode === 'trades' ? data.map(t=>t.time.split(' ')[0]+' '+getCoinKey(t.symbol)) : data.map(d=>d.date);
+  const values = mode === 'trades' ? data.map(t=>t.pnl) : data.map(d=>d.pnl);
+  let cumulative = 0;
+  const cumulativeVals = values.map(v => { cumulative += v; return cumulative; });
+  lineChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: cumulativeVals,
+        borderColor: '#4f8ef7',
+        backgroundColor: 'rgba(79,142,247,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: cumulativeVals.map(v => v >= 0 ? '#22d1a0' : '#f7516a'),
+        pointRadius: 4,
+        borderWidth: 2,
+      }]
+    },
+    options: chartOptions('line')
+  });
+}
+
+function renderDlChart() {
+  const ctx = document.getElementById('dlChart');
+  if(!ctx) return;
+  if(dlChartInst) dlChartInst.destroy();
+  const todayTrades = trades.slice(0,3);
+  let cumulative = 0;
+  const vals = todayTrades.map(t => { cumulative += t.pnl; return cumulative; });
+  const dlVal = -Math.abs(parseFloat(document.getElementById('dailyLossVal').value) || 200);
+  dlChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: todayTrades.map((t,i) => 'Трейд '+(i+1)+' '+getCoinKey(t.symbol)),
+      datasets: [
+        {
+          label: 'PnL за день',
+          data: vals,
+          borderColor: vals[vals.length-1] >= 0 ? '#22d1a0' : '#f7516a',
+          backgroundColor: vals[vals.length-1] >= 0 ? 'rgba(34,209,160,0.08)' : 'rgba(247,81,106,0.08)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5,
+          borderWidth: 2,
+        },
+        {
+          label: 'Daily Loss',
+          data: Array(todayTrades.length).fill(dlVal),
+          borderColor: '#f7516a',
+          borderDash: [6,4],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: chartOptions('line')
+  });
+}
+
+function aggregateByDay() {
+  const days = {};
+  trades.forEach(t => {
+    const d = t.time.split(' ')[0];
+    if(!days[d]) days[d] = {date:d, pnl:0};
+    days[d].pnl += t.pnl;
+  });
+  return Object.values(days).reverse();
+}
+
+function chartOptions(type) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'var(--bg3)',
+        titleColor: 'var(--text)',
+        bodyColor: 'var(--text2)',
+        borderColor: 'var(--border)',
+        borderWidth: 1,
+        callbacks: { label: ctx => `PnL: ${ctx.parsed.y >= 0 ? '+' : ''}$${ctx.parsed.y.toFixed(2)}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8890ab', font: { family: 'JetBrains Mono', size: 10 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8890ab', font: { family: 'JetBrains Mono', size: 10 }, callback: v => `$${v.toFixed(0)}` } }
+    }
+  };
+}
+
+function renderApiKeys() {
+  document.getElementById('apiKeysList').innerHTML = apiKeys.map(k => `
+    <div class="api-key-item">
+      <div class="api-dot ${k.active?'':'inactive'}"></div>
+      <div>
+        <div class="api-name">${k.name}</div>
+        <div class="api-exchange">${k.exchange} · ${k.key}</div>
+      </div>
+      <div class="api-date">${k.date}</div>
+      <button class="btn" style="font-size:11px;padding:4px 10px">Удалить</button>
+    </div>
+  `).join('');
+}
+
+function renderBasisList() {
+  document.getElementById('basisList').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      ${allBases.map((b,i) => `
+        <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;">
+          <span class="basis-tag" style="margin:0">${b}</span>
+          <span onclick="removeBasis(${i})" style="cursor:pointer;color:var(--text3);font-size:14px;margin-left:4px;line-height:1" title="Удалить">×</span>
+        </div>
+      `).join('')}
+    </div>`;
+  updateBasisSelects();
+}
+
+function updateBasisSelects() {
+  const bf = document.getElementById('basisFilter');
+  if(bf) bf.innerHTML = `<option value="">Все основания</option>` + allBases.map(b=>`<option value="${b}">${b}</option>`).join('');
+  const sf = document.getElementById('symbolFilter');
+  if(sf) {
+    const symbols = [...new Set(trades.map(t=>t.symbol))];
+    sf.innerHTML = `<option value="">Все символы</option>` + symbols.map(s=>`<option value="${s}">${getCoinKey(s)}USDT</option>`).join('');
   }
-  state.apiKey    = key;
-  state.apiSecret = secret;
-  state.accType   = acc;
-  localStorage.setItem('td_key',    key);
-  localStorage.setItem('td_secret', secret);
-  localStorage.setItem('td_acc',    acc);
-  showToast('✓ Сохранено. Загружаем данные…', true);
-  setTimeout(() => switchScreen('dash'), 800);
-  loadData();
-});
+}
 
-document.getElementById('btn-clear').addEventListener('click', () => {
-  if (!confirm('Очистить все данные и API ключи?')) return;
-  localStorage.removeItem('td_key');
-  localStorage.removeItem('td_secret');
-  localStorage.removeItem('td_acc');
-  state.apiKey = ''; state.apiSecret = ''; state.data = null; state.rawPnl = [];
-  document.getElementById('inp-key').value = '';
-  document.getElementById('inp-secret').value = '';
-  showToast('Данные очищены');
-});
+// ===================== INTERACTIONS =====================
+function toggleRow(id) {
+  const content = document.getElementById(`exp-content-${id}`);
+  const btn = document.getElementById(`exp-${id}`);
+  content.classList.toggle('open');
+  btn.classList.toggle('open');
+}
 
-// Close modal on overlay click
-document.getElementById('modal').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal')) closeModal();
-});
+function toggleFav(id, el) {
+  const t = trades.find(tr=>tr.id===id);
+  t.fav = !t.fav;
+  renderTrades();
+}
 
-/* ═══════════════════════════════════════
-   INIT
-═══════════════════════════════════════ */
-(function init() {
-  if (state.apiKey) {
-    document.getElementById('hdr-sub').textContent = 'Testnet · ' + state.apiKey.slice(0,6) + '…';
-    document.getElementById('btn-refresh').style.display = 'flex';
+function toggleFavFilter(el) {
+  filterFav = !filterFav;
+  el.classList.toggle('active', filterFav);
+  renderTrades();
+}
+
+function toggleDirFilter(el, dir) {
+  if(filterDir === dir) { filterDir = null; el.classList.remove('active'); }
+  else {
+    filterDir = dir;
+    document.querySelectorAll('#longFilter,#shortFilter').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');
   }
-  renderSettings();
-  if (state.apiKey && state.apiSecret) {
-    loadData();
-  } else {
-    renderDash();
+  renderTrades();
+}
+
+function filterBySymbol(val) { filterSymbol = val; renderTrades(); }
+function filterByBasis(val) { filterBasis = val; renderTrades(); }
+function filterByPeriod(val) { renderTrades(); }
+
+function sortTable(field) {
+  if(sortField === field) sortDir *= -1; else { sortField = field; sortDir = -1; }
+  document.querySelectorAll('.sort-arrow').forEach(e => e.textContent = '↕');
+  const arrow = document.getElementById(`sort-${field}`);
+  if(arrow) arrow.textContent = sortDir === -1 ? '↓' : '↑';
+  renderTrades();
+}
+
+function showPage(page) {
+  ['diary','analytics','profile'].forEach(p => {
+    document.getElementById(`page-${p}`).style.display = p === page ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  const titles = {diary:'Крипто-Дневник', analytics:'Визуальная Аналитика', profile:'Профиль'};
+  document.getElementById('pageTitle').textContent = titles[page];
+  document.getElementById('diaryTabs').style.display = page === 'diary' ? '' : 'none';
+  if(page === 'analytics') renderAnalytics();
+  if(page === 'profile') { renderApiKeys(); renderBasisList(); }
+}
+
+function showDiaryTab(tab, btn) {
+  ['trades','deals','transactions'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function showAnalyticsTab(tab, btn) {
+  ['dashboard','top5','bar','line','dailyloss','weekly'].forEach(t => {
+    document.getElementById(`atab-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.a-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if(tab === 'bar') renderBarChart();
+  if(tab === 'line') renderLineChart();
+  if(tab === 'dailyloss') renderDlChart();
+}
+
+function setBarMode(mode, btn) {
+  document.querySelectorAll('#atab-bar .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBarChart(mode);
+}
+
+function setLineMode(mode, btn) {
+  document.querySelectorAll('#atab-line .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLineChart(mode);
+}
+
+function updateDailyLoss() { renderDlChart(); }
+
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme');
+  setTheme(t === 'dark' ? 'light' : 'dark');
+}
+
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelector('.theme-btn').textContent = t === 'dark' ? '🌙' : '☀️';
+}
+
+function setRowHeight(h) {
+  const sizes = {small:'8px 16px', medium:'11px 16px', large:'14px 16px'};
+  document.querySelectorAll('.row-main').forEach(el => el.style.padding = sizes[h]);
+}
+
+function exportData() {
+  const csv = ['Дата,Символ,Направление,Вход,Выход,PnL($),PnL(%),Комиссия,Основание',
+    ...trades.map(t=>`${t.time},${t.symbol},${t.dir},${t.entry},${t.exit},${t.pnl.toFixed(2)},${t.pnlPct.toFixed(2)},${t.fee},${t.basis}`)
+  ].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'trades_export.csv'; a.click();
+}
+
+function refreshData() {
+  const btn = document.querySelector('.btn.primary');
+  btn.textContent = '⟳ Загрузка...';
+  setTimeout(() => { btn.textContent = '⟳ Обновить'; renderSummary(); renderTrades(); }, 1200);
+}
+
+function addManualTrade() {
+  const sym = document.getElementById('mt-symbol').value || 'BTCUSDT';
+  const dir = document.getElementById('mt-dir').value;
+  const entry = parseFloat(document.getElementById('mt-entry').value) || 100;
+  const exit = parseFloat(document.getElementById('mt-exit').value) || 102;
+  const vol = parseFloat(document.getElementById('mt-vol').value) || 1000;
+  const fee = parseFloat(document.getElementById('mt-fee').value) || 0.5;
+  const comment = document.getElementById('mt-comment').value;
+  const basis = document.getElementById('mt-basis').value;
+  const qty = vol / entry;
+  const multiplier = dir === 'Long' ? 1 : -1;
+  const rawPnl = multiplier * (exit - entry) * qty;
+  const pnl = rawPnl - fee;
+  const pnlPct = (pnl / vol) * 100;
+  const now = new Date();
+  const timeStr = now.toISOString().slice(0,10) + ' ' + now.toTimeString().slice(0,5);
+  trades.unshift({id: Date.now(), time: timeStr, symbol: sym.toUpperCase(), dir, entry, exit, vol, qty, fee, funding:0, basis, comment, fav:false, pnl, pnlPct});
+  closeModal('addTradeModal');
+  renderSummary();
+  renderTrades();
+}
+
+function addBasis() {
+  const input = document.getElementById('newBasisInput');
+  const val = input.value.trim();
+  if(val && !allBases.includes(val)) {
+    allBases.push(val);
+    input.value = '';
+    renderBasisList();
   }
-})();
+}
+
+function removeBasis(idx) {
+  allBases.splice(idx, 1);
+  renderBasisList();
+}
+
+function closeModal(id, event) {
+  if(!event || event.target === document.getElementById(id)) {
+    document.getElementById(id).classList.remove('open');
+  }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if(e.ctrlKey && e.code === 'Space') { e.preventDefault(); refreshData(); }
+  if(e.shiftKey && e.code === 'Space') { e.preventDefault(); /* toggle first row */ }
+  if(e.key === 'Escape') { document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open')); }
+});
+
+// INIT
+renderSummary();
+renderTrades();
+renderDeals();
+renderTransactions();
+updateBasisSelects();
 </script>
 </body>
 </html>
