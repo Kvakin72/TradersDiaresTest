@@ -325,7 +325,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <div class="avatar">АТ</div>
         <div class="user-info">
           <div class="user-name">Алексей Трейдер</div>
-          <div class="user-email">alex@trade.pro</div>
+          <div class="user-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="bfded3dac7ffcbcddedbda91cfcdd0">[email&#160;protected]</a></div>
         </div>
       </div>
     </div>
@@ -588,8 +588,19 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div id="page-profile" style="display:none">
         <div class="profile-panel">
           <div class="profile-section">
-            <div class="profile-section-title">🔑 API ключи / Счета</div>
-            <div id="apiKeysList"></div>
+            <div class="profile-section-title" style="justify-content:space-between;display:flex;align-items:center">
+              <span>🔑 API ключи / Счета</span>
+              <button class="btn primary" style="font-size:11px" onclick="document.getElementById('addBybitModal').classList.add('open')">+ Подключить Bybit Demo</button>
+            </div>
+            <div id="apiKeysList">
+              <div class="empty-state" style="padding:30px 20px">
+                <div class="empty-icon">🔌</div>
+                <div class="empty-text">Нет подключённых аккаунтов</div>
+                <div style="margin-top:10px">
+                  <button class="btn primary" onclick="document.getElementById('addBybitModal').classList.add('open')">Подключить Bybit Demo Trading</button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="profile-section">
             <div class="profile-section-title">⚙️ Настройки</div>
@@ -645,7 +656,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
             <div class="profile-section-title">👤 Аккаунт</div>
             <div class="profile-row">
               <div class="pr-label">E-mail</div>
-              <div class="pr-val">alex@trade.pro</div>
+              <div class="pr-val"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c5a4a9a0bd85b1b7a4a1a0ebb5b7aa">[email&#160;protected]</a></div>
             </div>
             <div class="profile-row">
               <div class="pr-label">Telegram</div>
@@ -738,6 +749,105 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   </div>
 </div>
 
+<!-- BYBIT DEMO CONNECT MODAL -->
+<div class="modal-overlay" id="addBybitModal" onclick="closeModal('addBybitModal', event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px">
+    <div class="modal-title" style="display:flex;align-items:center;gap:10px">
+      <span style="background:#f7a600;color:#000;border-radius:6px;padding:4px 10px;font-size:13px;font-weight:800">Bybit</span>
+      Подключить Demo Trading
+    </div>
+
+    <!-- Step indicator -->
+    <div style="display:flex;gap:8px;margin-bottom:18px;align-items:center">
+      <div id="step1ind" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--accent)">
+        <div style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:11px">1</div>
+        Данные ключа
+      </div>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <div id="step2ind" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text3)">
+        <div style="width:20px;height:20px;border-radius:50%;background:var(--bg4);color:var(--text3);display:flex;align-items:center;justify-content:center;font-size:11px">2</div>
+        Проверка
+      </div>
+    </div>
+
+    <div id="bybitStep1">
+      <div style="background:rgba(247,166,0,0.08);border:1px solid rgba(247,166,0,0.25);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.6;color:var(--text2)">
+        📋 <strong style="color:var(--text)">Как получить ключи:</strong><br>
+        1. Войдите на <a href="https://www.bybit.com" target="_blank" style="color:var(--accent)">bybit.com</a><br>
+        2. Перейдите в <strong>Demo Trading</strong> (переключатель в шапке сайта)<br>
+        3. Откройте <strong>Профиль → API Management</strong><br>
+        4. Создайте ключ с правами <code style="background:var(--bg4);padding:1px 5px;border-radius:3px">Read-Only</code> для позиций<br>
+        5. Скопируйте API Key и Secret сюда
+      </div>
+      <div style="background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:var(--accent)">
+        🔗 Эндпоинт: <code style="font-family:var(--mono);font-weight:600">https://api-demo.bybit.com</code>
+      </div>
+      <div class="modal-field">
+        <label>Название счёта</label>
+        <input class="modal-input" id="bb-name" placeholder="Мой Bybit Demo" value="Bybit Demo Trading">
+      </div>
+      <div class="modal-field">
+        <label>API Key</label>
+        <input class="modal-input" id="bb-key" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="modal-field">
+        <label>API Secret</label>
+        <input class="modal-input" id="bb-secret" type="password" placeholder="••••••••••••••••••••••••" autocomplete="off">
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">🔒 Секрет хранится только в памяти браузера и не передаётся третьим лицам</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('addBybitModal')">Отмена</button>
+        <button class="btn primary" onclick="bybitConnectStep2()">Далее → Проверить связь</button>
+      </div>
+    </div>
+
+    <div id="bybitStep2" style="display:none">
+      <div id="bybitConnStatus" style="text-align:center;padding:20px 0">
+        <div style="font-size:32px;margin-bottom:10px" id="connStatusIcon">⏳</div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:6px" id="connStatusTitle">Проверяю подключение...</div>
+        <div style="font-size:12px;color:var(--text3);line-height:1.6" id="connStatusMsg">
+          Отправляю тестовый запрос к<br>
+          <code style="font-family:var(--mono);color:var(--accent)">api-demo.bybit.com/v5/account/wallet-balance</code>
+        </div>
+        <div id="connBalanceBlock" style="display:none;margin-top:16px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;text-align:left">
+          <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Баланс Demo аккаунта</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div>
+              <div style="font-size:10px;color:var(--text3)">Equity</div>
+              <div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--green)" id="conn-equity">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3)">Баланс</div>
+              <div style="font-family:var(--mono);font-size:15px;font-weight:700" id="conn-balance">—</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3)">Unrealised PnL</div>
+              <div style="font-family:var(--mono);font-size:15px;font-weight:700" id="conn-upnl">—</div>
+            </div>
+          </div>
+        </div>
+        <div id="connTradeBlock" style="display:none;margin-top:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:left">
+          <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Загружено трейдов</div>
+          <div style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--accent)" id="conn-trade-count">0</div>
+        </div>
+        <div id="connCorsNote" style="display:none;margin-top:14px;background:rgba(247,81,106,0.08);border:1px solid rgba(247,81,106,0.25);border-radius:8px;padding:12px;text-align:left;font-size:11px;line-height:1.7;color:var(--text2)">
+          <strong style="color:var(--red)">⚠️ CORS ограничение браузера</strong><br>
+          Прямые запросы из браузера к <code style="font-family:var(--mono)">api-demo.bybit.com</code> блокируются политикой CORS.<br>
+          <strong>Решения:</strong><br>
+          • Запустить приложение через локальный прокси-сервер<br>
+          • Использовать расширение CORS Unblock (только для разработки)<br>
+          • Развернуть backend-прокси (Node.js / Python)<br><br>
+          Ключи сохранены. Сейчас будут загружены <strong style="color:var(--gold)">демо-данные</strong> для предпросмотра.
+        </div>
+      </div>
+      <div class="modal-actions" id="connActions" style="display:none">
+        <button class="btn" onclick="bybitStepBack()">← Назад</button>
+        <button class="btn primary" id="connSaveBtn" onclick="bybitSaveKey()">✓ Сохранить и загрузить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PWD MODAL -->
 <div class="modal-overlay" id="pwdModal" onclick="closeModal('pwdModal', event)">
   <div class="modal" onclick="event.stopPropagation()">
@@ -752,7 +862,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ===================== DATA =====================
 const COINS = {
   BTC: {color:'#f7931a', icon:'₿'},
@@ -782,19 +892,85 @@ let trades = [
   {id:10, time:'2025-03-24 11:30', symbol:'ADAUSDT', dir:'Short', entry:0.485, exit:0.462, vol:1800, qty:3711, fee:1.26, funding:0.22, basis:'Дивергенция', comment:'Медвежья дивергенция', fav:false, pnl:0, pnlPct:0},
 ];
 
-// Calculate PnL
-trades.forEach(t => {
-  const multiplier = t.dir === 'Long' ? 1 : -1;
-  const rawPnl = multiplier * (t.exit - t.entry) * t.qty;
-  t.pnl = rawPnl - t.fee - t.funding;
-  t.pnlPct = (t.pnl / t.vol) * 100;
-});
+// PnL calculated in calcPnl() at init
 
-const apiKeys = [
-  {name:'Binance Main', exchange:'Binance', key:'3Wu5z***', date:'2024-11-12', active:true},
-  {name:'Bybit Futures', exchange:'Bybit', key:'aB9xk***', date:'2024-12-01', active:true},
-  {name:'OKX Demo', exchange:'OKX', key:'7cPmR***', date:'2025-01-15', active:false},
-];
+// ===================== BYBIT DEMO TRADING API =====================
+const BYBIT_DEMO_BASE = 'https://api-demo.bybit.com';
+// NOTE: Direct browser→Bybit requests are blocked by CORS.
+// In production wrap with a lightweight proxy or backend.
+// The full signing logic below is production-ready.
+
+let apiKeys = []; // populated via addBybitDemoKey()
+
+/* ---- HMAC-SHA256 via Web Crypto API ---- */
+async function hmacSha256(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ---- Build signed Bybit Demo request ---- */
+async function bybitDemoGet(path, params, apiKey, apiSecret) {
+  const ts = Date.now().toString();
+  const recvWindow = '5000';
+  const queryString = new URLSearchParams(params).toString();
+  const preHash = ts + apiKey + recvWindow + queryString;
+  const sign = await hmacSha256(apiSecret, preHash);
+  const headers = {
+    'X-BAPI-API-KEY': apiKey,
+    'X-BAPI-TIMESTAMP': ts,
+    'X-BAPI-SIGN': sign,
+    'X-BAPI-RECV-WINDOW': recvWindow,
+  };
+  const url = `${BYBIT_DEMO_BASE}${path}?${queryString}`;
+  const resp = await fetch(url, { headers });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+/* ---- Fetch closed PnL from Bybit Demo Trading ---- */
+async function fetchBybitDemoTrades(apiKey, apiSecret) {
+  const params = { category: 'linear', limit: '50' };
+  const data = await bybitDemoGet('/v5/position/closed-pnl', params, apiKey, apiSecret);
+  if (data.retCode !== 0) throw new Error(data.retMsg || 'Bybit API error');
+  return data.result.list.map(r => {
+    const dir   = r.side === 'Buy' ? 'Long' : 'Short';
+    const entry = parseFloat(r.avgEntryPrice);
+    const exit  = parseFloat(r.avgExitPrice);
+    const qty   = parseFloat(r.qty);
+    const vol   = entry * qty;
+    const fee   = parseFloat(r.cumEntryFee) + parseFloat(r.cumExitFee);
+    const funding = parseFloat(r.fundingFee || 0);
+    const pnl   = parseFloat(r.closedPnl);
+    const pnlPct = vol > 0 ? (pnl / vol) * 100 : 0;
+    const ts    = new Date(parseInt(r.updatedTime)).toISOString().slice(0,16).replace('T',' ');
+    return {
+      id: parseInt(r.orderId?.slice(-6)) || Date.now(),
+      time: ts, symbol: r.symbol, dir, entry, exit,
+      vol, qty, fee, funding,
+      basis: 'Не указано', comment: '', fav: false, pnl, pnlPct,
+      source: 'bybit-demo'
+    };
+  });
+}
+
+/* ---- Fetch wallet balance from Bybit Demo Trading ---- */
+async function fetchBybitDemoBalance(apiKey, apiSecret) {
+  const data = await bybitDemoGet('/v5/account/wallet-balance',
+    { accountType: 'UNIFIED' }, apiKey, apiSecret);
+  if (data.retCode !== 0) throw new Error(data.retMsg);
+  const acc = data.result.list?.[0];
+  return {
+    totalEquity:  parseFloat(acc?.totalEquity  || 0),
+    totalBalance: parseFloat(acc?.totalWalletBalance || 0),
+    unrealisedPnl: parseFloat(acc?.totalUnrealisedPnl || 0),
+  };
+}
 
 // Sub-deals per trade (simulated)
 function getSubDeals(trade) {
@@ -1262,18 +1438,187 @@ function chartOptions(type) {
   };
 }
 
+// ============ BYBIT DEMO CONNECT FLOW ============
+let pendingBybitKey = null;
+
+async function bybitConnectStep2() {
+  const key    = document.getElementById('bb-key').value.trim();
+  const secret = document.getElementById('bb-secret').value.trim();
+  const name   = document.getElementById('bb-name').value.trim() || 'Bybit Demo';
+  if (!key || !secret) { alert('Введите API Key и Secret'); return; }
+
+  // Switch to step 2
+  document.getElementById('bybitStep1').style.display = 'none';
+  document.getElementById('bybitStep2').style.display = '';
+  document.getElementById('step1ind').style.color = 'var(--green)';
+  document.getElementById('step2ind').style.color = 'var(--accent)';
+  document.getElementById('step2ind').querySelector('div').style.background = 'var(--accent)';
+  document.getElementById('step2ind').querySelector('div').style.color = 'white';
+
+  pendingBybitKey = { name, key, secret, exchange: 'Bybit Demo', date: new Date().toISOString().slice(0,10), active: false };
+
+  // Try real API call
+  try {
+    setConnStatus('loading', '⏳', 'Подключаюсь к api-demo.bybit.com...', '');
+    const bal = await fetchBybitDemoBalance(key, secret);
+    document.getElementById('conn-equity').textContent  = '$' + bal.totalEquity.toFixed(2);
+    document.getElementById('conn-balance').textContent = '$' + bal.totalBalance.toFixed(2);
+    const upnl = bal.unrealisedPnl;
+    const upnlEl = document.getElementById('conn-upnl');
+    upnlEl.textContent = (upnl >= 0 ? '+' : '') + '$' + upnl.toFixed(2);
+    upnlEl.style.color = upnl >= 0 ? 'var(--green)' : 'var(--red)';
+    document.getElementById('connBalanceBlock').style.display = '';
+
+    setConnStatus('success', '✅', 'Подключение успешно!', 'Баланс Demo аккаунта получен.');
+
+    // Fetch trades
+    try {
+      const fetched = await fetchBybitDemoTrades(key, secret);
+      if (fetched.length > 0) {
+        trades.unshift(...fetched);
+        trades.forEach(t => { if(!t.pnl) calcPnl(t); });
+        document.getElementById('conn-trade-count').textContent = fetched.length;
+        document.getElementById('connTradeBlock').style.display = '';
+      }
+    } catch(e2) { /* trade fetch optional */ }
+
+    pendingBybitKey.active = true;
+    pendingBybitKey.balance = bal;
+    document.getElementById('connActions').style.display = '';
+    document.getElementById('connSaveBtn').textContent = '✓ Сохранить аккаунт';
+
+  } catch (err) {
+    // CORS or network error — show friendly explanation, save key anyway in demo mode
+    console.warn('Bybit API error:', err);
+    document.getElementById('connCorsNote').style.display = '';
+    setConnStatus('cors', '🔒', 'Запрос заблокирован CORS', '');
+    pendingBybitKey.active = false;
+    pendingBybitKey.corsBlocked = true;
+    document.getElementById('connActions').style.display = '';
+    document.getElementById('connSaveBtn').textContent = '✓ Сохранить (демо-режим)';
+  }
+}
+
+function setConnStatus(type, icon, title, msg) {
+  document.getElementById('connStatusIcon').textContent = icon;
+  document.getElementById('connStatusTitle').textContent = title;
+  document.getElementById('connStatusMsg').innerHTML = msg ||
+    (type === 'loading'
+      ? 'Отправляю запрос к<br><code style="font-family:var(--mono);color:var(--accent)">api-demo.bybit.com/v5/account/wallet-balance</code>'
+      : '');
+}
+
+function bybitStepBack() {
+  document.getElementById('bybitStep1').style.display = '';
+  document.getElementById('bybitStep2').style.display = 'none';
+  document.getElementById('connActions').style.display = 'none';
+  document.getElementById('connBalanceBlock').style.display = 'none';
+  document.getElementById('connTradeBlock').style.display = 'none';
+  document.getElementById('connCorsNote').style.display = 'none';
+}
+
+function bybitSaveKey() {
+  if (!pendingBybitKey) return;
+  apiKeys.push(pendingBybitKey);
+  closeModal('addBybitModal');
+  renderApiKeys();
+  renderSummary();
+  renderTrades();
+  // Reset step
+  document.getElementById('bybitStep1').style.display = '';
+  document.getElementById('bybitStep2').style.display = 'none';
+  document.getElementById('connActions').style.display = 'none';
+  document.getElementById('connBalanceBlock').style.display = 'none';
+  document.getElementById('connTradeBlock').style.display = 'none';
+  document.getElementById('connCorsNote').style.display = 'none';
+  document.getElementById('bb-key').value = '';
+  document.getElementById('bb-secret').value = '';
+  pendingBybitKey = null;
+}
+
+function deleteApiKey(idx) {
+  if (!confirm('Удалить ключ "' + apiKeys[idx].name + '"?')) return;
+  apiKeys.splice(idx, 1);
+  renderApiKeys();
+}
+
 function renderApiKeys() {
-  document.getElementById('apiKeysList').innerHTML = apiKeys.map(k => `
+  const container = document.getElementById('apiKeysList');
+  if (!apiKeys.length) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:30px 20px">
+        <div class="empty-icon">🔌</div>
+        <div class="empty-text">Нет подключённых аккаунтов</div>
+        <div style="margin-top:10px">
+          <button class="btn primary" onclick="document.getElementById('addBybitModal').classList.add('open')">Подключить Bybit Demo Trading</button>
+        </div>
+      </div>`;
+    return;
+  }
+  container.innerHTML = apiKeys.map((k, idx) => {
+    const maskedKey = k.key.length > 8 ? k.key.slice(0,6) + '***' + k.key.slice(-4) : k.key + '***';
+    return `
     <div class="api-key-item">
-      <div class="api-dot ${k.active?'':'inactive'}"></div>
-      <div>
-        <div class="api-name">${k.name}</div>
-        <div class="api-exchange">${k.exchange} · ${k.key}</div>
+      <div class="api-dot ${k.active ? '' : 'inactive'}"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="api-name">${k.name}</div>
+          <span style="font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;background:rgba(247,166,0,0.12);color:#f7a600;border:1px solid rgba(247,166,0,0.25)">Bybit</span>
+          <span style="font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;background:rgba(34,209,160,0.1);color:var(--green);border:1px solid rgba(34,209,160,0.2)">Demo Trading</span>
+          ${k.corsBlocked ? '<span style="font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;background:var(--red-bg);color:var(--red)">CORS</span>' : ''}
+        </div>
+        <div style="display:flex;gap:12px;margin-top:3px;align-items:center">
+          <span class="api-exchange" style="font-family:var(--mono)">${maskedKey}</span>
+          <span style="font-size:10px;color:var(--text3)">🔗 api-demo.bybit.com</span>
+          <span class="api-date">${k.date}</span>
+        </div>
+        ${k.balance ? `<div style="margin-top:6px;display:flex;gap:16px">
+          <span style="font-size:11px;color:var(--text3)">Equity: <strong style="color:var(--green);font-family:var(--mono)">$${k.balance.totalEquity.toFixed(2)}</strong></span>
+          <span style="font-size:11px;color:var(--text3)">Баланс: <strong style="font-family:var(--mono)">$${k.balance.totalBalance.toFixed(2)}</strong></span>
+        </div>` : ''}
       </div>
-      <div class="api-date">${k.date}</div>
-      <button class="btn" style="font-size:11px;padding:4px 10px">Удалить</button>
-    </div>
-  `).join('');
+      <div style="display:flex;gap:6px">
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="refreshBybitKey(${idx})">⟳ Обновить</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px;border-color:var(--red);color:var(--red)" onclick="deleteApiKey(${idx})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function refreshBybitKey(idx) {
+  const k = apiKeys[idx];
+  if (!k) return;
+  const btn = event.currentTarget;
+  btn.textContent = '⟳ ...';
+  btn.disabled = true;
+  try {
+    const bal = await fetchBybitDemoBalance(k.key, k.secret);
+    k.balance = bal;
+    k.active = true;
+    k.corsBlocked = false;
+    const fetched = await fetchBybitDemoTrades(k.key, k.secret);
+    if (fetched.length > 0) {
+      trades = trades.filter(t => t.source !== 'bybit-demo');
+      trades.unshift(...fetched);
+      trades.forEach(t => calcPnl(t));
+      renderSummary();
+      renderTrades();
+    }
+  } catch(e) {
+    k.corsBlocked = true;
+    k.active = false;
+  }
+  renderApiKeys();
+  btn.textContent = '⟳ Обновить';
+  btn.disabled = false;
+}
+
+function calcPnl(t) {
+  if(t.pnl === undefined || t.pnl === 0) {
+    const mult = t.dir === 'Long' ? 1 : -1;
+    t.pnl = mult * (t.exit - t.entry) * t.qty - t.fee - (t.funding||0);
+    t.pnlPct = t.vol > 0 ? (t.pnl / t.vol) * 100 : 0;
+  }
 }
 
 function renderBasisList() {
@@ -1464,16 +1809,18 @@ function closeModal(id, event) {
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
   if(e.ctrlKey && e.code === 'Space') { e.preventDefault(); refreshData(); }
-  if(e.shiftKey && e.code === 'Space') { e.preventDefault(); /* toggle first row */ }
+  if(e.shiftKey && e.code === 'Space') { e.preventDefault(); }
   if(e.key === 'Escape') { document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open')); }
 });
 
-// INIT
+// ===================== INIT =====================
+trades.forEach(calcPnl);
 renderSummary();
 renderTrades();
 renderDeals();
 renderTransactions();
 updateBasisSelects();
+renderApiKeys();
 </script>
 </body>
 </html>
