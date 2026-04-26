@@ -485,6 +485,169 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   .nav-section { display: none; }
   .user-card { justify-content: center; }
 }
+
+/* ═══════════════════════════════════════════════════
+   MOBILE ADAPTIVE  ≤ 640px
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  html, body { overflow: hidden; font-size: 13px; }
+
+  /* Скрываем боковую панель — навигация внизу */
+  #sidebar { display: none; }
+
+  /* Главный контейнер занимает всю ширину */
+  #app { flex-direction: column; }
+  #main { width: 100vw; padding-bottom: 60px; }
+
+  /* Topbar: убираем лишнее, оставляем заголовок и кнопки */
+  #topbar {
+    height: 48px;
+    padding: 0 12px;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .topbar-title { font-size: 14px; }
+  #diaryTabs { display: none; } /* вкладки переедут вниз */
+  .topbar-actions { gap: 6px; }
+  .topbar-actions .btn:not(.primary):not(.theme-btn) { display: none; } /* скрываем экспорт */
+
+  /* Content */
+  #content { padding: 12px; }
+
+  /* Summary cards — 2 в ряд */
+  .summary-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; margin-bottom: 12px; }
+  .sum-card { padding: 10px 12px; }
+  .sum-val { font-size: 18px !important; }
+  .sum-label { font-size: 10px; }
+  .sum-change { font-size: 10px; }
+
+  /* Filters bar — скролл горизонтально */
+  .filters-bar { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .filters-bar::-webkit-scrollbar { display: none; }
+  .filter-select { font-size: 11px; padding: 5px 22px 5px 8px; flex-shrink: 0; }
+  .filter-tag { flex-shrink: 0; font-size: 11px; padding: 5px 10px; }
+
+  /* Trades table — горизонтальный скролл */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+  .table-head.trades-grid,
+  .trade-row .row-main {
+    grid-template-columns: 26px 120px 58px 58px 80px 80px 80px 70px 60px 1fr 36px;
+    min-width: 700px;
+  }
+  .table-head { min-width: 700px; }
+  .row-main { padding: 9px 12px; }
+  .cell { font-size: 11.5px; }
+
+  /* Expanded row */
+  .row-expanded { padding: 10px 12px 10px 12px; }
+  .expanded-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Analytics dashboard */
+  .dashboard-row { grid-template-columns: 1fr !important; gap: 10px; margin-bottom: 10px; }
+  .dash-card { padding: 14px; }
+  .pnl-main { font-size: 28px; }
+
+  /* Heatmap — горизонтальный скролл */
+  .hm-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .hm-cell { min-width: 24px; min-height: 24px; font-size: 8px; }
+
+  /* Week grid */
+  .week-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+
+  /* Modals */
+  .modal { min-width: 0 !important; max-width: 95vw !important; padding: 16px !important; margin: 8px; }
+  .modal-overlay { align-items: flex-end; }
+  .modal { border-radius: 16px 16px 0 0 !important; max-width: 100vw !important; width: 100% !important; margin: 0; }
+
+  /* Profile panel */
+  .profile-panel { max-width: 100%; }
+
+  /* Topbar tabs для аналитики */
+  #analyticsTabs { display: none; }
+
+  /* ── Bottom navigation ── */
+  #bottomNav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    align-items: stretch;
+  }
+  .bnav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 10px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    padding: 6px 4px;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bnav-item.active { color: var(--accent); }
+  .bnav-item .bnav-icon { font-size: 20px; line-height: 1; }
+
+  /* Mobile diary tabs — горизонтальный скролл под topbar */
+  #mobileDiaryTabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 8px 12px 4px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+  #mobileDiaryTabs::-webkit-scrollbar { display: none; }
+  .mob-tab-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .mob-tab-btn.active { background: var(--bg4); color: var(--accent); }
+
+  /* Mobile analytics tabs */
+  #mobileAnalyticsTabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 8px 12px 4px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+  #mobileAnalyticsTabs::-webkit-scrollbar { display: none; }
+}
+
+/* На десктопе скрываем мобильные элементы */
+@media (min-width: 641px) {
+  #bottomNav { display: none; }
+  #mobileDiaryTabs { display: none; }
+  #mobileAnalyticsTabs { display: none; }
+}
 </style>
 </head>
 <body>
@@ -530,6 +693,22 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     </div>
   </aside>
 
+  <!-- MOBILE BOTTOM NAVIGATION -->
+  <nav id="bottomNav">
+    <button class="bnav-item active" onclick="mobileNavTo('diary')" id="bnav-diary">
+      <span class="bnav-icon">📋</span>Дневник
+    </button>
+    <button class="bnav-item" onclick="mobileNavTo('analytics')" id="bnav-analytics">
+      <span class="bnav-icon">📈</span>Аналитика
+    </button>
+    <button class="bnav-item" onclick="refreshData()" id="bnav-refresh">
+      <span class="bnav-icon">⟳</span>Обновить
+    </button>
+    <button class="bnav-item" onclick="mobileNavTo('profile')" id="bnav-profile">
+      <span class="bnav-icon">👤</span>Профиль
+    </button>
+  </nav>
+
   <!-- MAIN -->
   <div id="main">
     <!-- TOPBAR -->
@@ -547,6 +726,25 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <button class="btn primary" onclick="refreshData()">⟳ Обновить</button>
         <button class="btn btn-icon theme-btn" onclick="toggleTheme()" title="Сменить тему">🌙</button>
       </div>
+    </div>
+
+    <!-- MOBILE DIARY TABS -->
+    <div id="mobileDiaryTabs">
+      <button class="mob-tab-btn active" onclick="mobileDiaryTab('trades', this)">Трейды</button>
+      <button class="mob-tab-btn" onclick="mobileDiaryTab('deals', this)">Позиции</button>
+      <button class="mob-tab-btn" onclick="mobileDiaryTab('orders', this)">Ордера</button>
+      <button class="mob-tab-btn" onclick="mobileDiaryTab('journal', this)">Журнал</button>
+      <button class="mob-tab-btn" onclick="mobileDiaryTab('transactions', this)">Транзакции</button>
+    </div>
+
+    <!-- MOBILE ANALYTICS TABS -->
+    <div id="mobileAnalyticsTabs" style="display:none">
+      <button class="mob-tab-btn active" onclick="mobileAnalyticsTab('overview', this)">Обзор</button>
+      <button class="mob-tab-btn" onclick="mobileAnalyticsTab('symbols', this)">Символы</button>
+      <button class="mob-tab-btn" onclick="mobileAnalyticsTab('heatmap', this)">Тепловая карта</button>
+      <button class="mob-tab-btn" onclick="mobileAnalyticsTab('drawdown', this)">Просадка</button>
+      <button class="mob-tab-btn" onclick="mobileAnalyticsTab('top5', this)">Топ-5</button>
+      <button class="mob-tab-btn" onclick="mobileAnalyticsTab('weekly', this)">По неделям</button>
     </div>
 
     <!-- CONTENT -->
@@ -1570,7 +1768,10 @@ async function loadApiKeys() {
         data.apiKeys?.map(k => ({name:k.name, key:k.key?.slice(0,8), hasSecret:!!k.secret})));
       if(data.apiKeys && data.apiKeys.length > 0) {
         apiKeys = deduplicateApiKeys(
-          data.apiKeys.map(k => ({...k, secret: k.secret || null}))
+          data.apiKeys.map(k => ({
+            ...k,
+            secret: k.secret || localStorage.getItem('bb_secret_' + (k.key||'').slice(0,8)) || null
+          }))
         );
         console.log('[config] После дедупликации:', apiKeys.length, 'ключей');
         if(apiKeys.length < data.apiKeys.length) {
@@ -1592,7 +1793,10 @@ async function loadApiKeys() {
     if(raw) {
       const data = JSON.parse(raw);
       apiKeys = deduplicateApiKeys(
-        (data.apiKeys || data).map(k => ({...k, secret: k.secret || null}))
+        (data.apiKeys || data).map(k => ({
+          ...k,
+          secret: k.secret || localStorage.getItem('bb_secret_' + (k.key||'').slice(0,8)) || null
+        }))
       );
     }
   } catch(e) { apiKeys = []; }
@@ -1600,6 +1804,17 @@ async function loadApiKeys() {
 
 function saveSecretForSession(apiKey, secret) {
   try { sessionStorage.setItem('bb_secret_' + apiKey.slice(0,8), secret); } catch(e){}
+  // Сохраняем и в localStorage — чтобы secret выживал после закрытия браузера (нужно для мобильного)
+  try { localStorage.setItem('bb_secret_' + apiKey.slice(0,8), secret); } catch(e){}
+}
+
+function getStoredSecret(apiKey) {
+  const k = apiKey.slice(0,8);
+  return apiKey && (
+    sessionStorage.getItem('bb_secret_' + k) ||
+    localStorage.getItem('bb_secret_' + k) ||
+    null
+  );
 }
 
 // Init: load from config, then render and auto-sync if keys present
@@ -2263,7 +2478,7 @@ async function fetchOpenPositions() {
   body.innerHTML = '<div class="empty-state" style="padding:40px"><div style="font-size:22px">⏳</div><div class="empty-text">Загружаю позиции...</div></div>';
 
   const k = apiKeys[0];
-  const secret = k.secret || sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+  const secret = k.secret || getStoredSecret(k.key);
   if(!secret) {
     body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔑</div><div class="empty-text">Секрет API не найден — переподключите аккаунт</div></div>';
     return;
@@ -2972,6 +3187,7 @@ function deleteApiKey(idx) {
   if (!confirm('Удалить ключ "' + apiKeys[idx].name + '"?')) return;
   const k = apiKeys[idx];
   try { sessionStorage.removeItem('bb_secret_' + k.key.slice(0,8)); } catch(e){}
+  try { localStorage.removeItem('bb_secret_' + k.key.slice(0,8)); } catch(e){}
   // Remove bybit-demo trades sourced from this key
   trades = trades.filter(t => t.source !== 'bybit-demo' || t.apiKeyRef !== k.key.slice(0,8));
   apiKeys.splice(idx, 1);
@@ -3033,14 +3249,12 @@ async function refreshBybitKey(idx) {
   btn.innerHTML = '⟳ Синхронизация...';
   btn.disabled = true;
 
-  // Try to recover secret from sessionStorage if not in memory
-  if (!k.secret) {
-    k.secret = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8)) || null;
-  }
+  // Восстанавливаем secret из sessionStorage или localStorage
+  if (!k.secret) k.secret = getStoredSecret(k.key);
   if (!k.secret) {
     btn.textContent = origText;
     btn.disabled = false;
-    alert('⚠️ Секрет API не найден в текущей сессии браузера.\nПожалуйста, переподключите аккаунт через «Подключить Bybit Demo».');
+    alert('⚠️ Секрет API не найден.\nПожалуйста, переподключите аккаунт через «Подключить Bybit Demo».');
     return;
   }
 
@@ -3085,7 +3299,7 @@ async function syncAllKeys() {
   let total = 0;
   for(let idx = 0; idx < apiKeys.length; idx++) {
     const k = apiKeys[idx];
-    if(!k.secret) k.secret = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+    if(!k.secret) k.secret = getStoredSecret(k.key);
     if(!k.secret) continue;
     try {
       const bal = await fetchBybitDemoBalance(k.key, k.secret);
@@ -3872,12 +4086,67 @@ function showPage(page) {
     document.getElementById(`page-${p}`).style.display = p === page ? '' : 'none';
   });
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  if(event && event.currentTarget) event.currentTarget.classList.add('active');
   const titles = {diary:'Крипто-Дневник', analytics:'Визуальная Аналитика', profile:'Профиль'};
   document.getElementById('pageTitle').textContent = titles[page];
-  document.getElementById('diaryTabs').style.display = page === 'diary' ? '' : 'none';
+  const isMobile = window.innerWidth <= 640;
+  document.getElementById('diaryTabs').style.display       = (!isMobile && page === 'diary') ? '' : 'none';
+  const mdt = document.getElementById('mobileDiaryTabs');
+  const mat = document.getElementById('mobileAnalyticsTabs');
+  if(mdt) mdt.style.display = (isMobile && page === 'diary')     ? 'flex' : 'none';
+  if(mat) mat.style.display = (isMobile && page === 'analytics') ? 'flex' : 'none';
   if(page === 'analytics') renderAnalytics();
   if(page === 'profile') { renderApiKeys(); renderBasisList(); }
+}
+
+// ── Мобильная нижняя навигация ─────────────────────────────────────────
+function mobileNavTo(page) {
+  // Обновляем активный пункт bottom nav
+  ['diary','analytics','profile'].forEach(p => {
+    const btn = document.getElementById('bnav-' + p);
+    if(btn) btn.classList.toggle('active', p === page);
+  });
+  // Имитируем showPage без event
+  ['diary','analytics','profile'].forEach(p => {
+    document.getElementById(`page-${p}`).style.display = p === page ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const titles = {diary:'Крипто-Дневник', analytics:'Визуальная Аналитика', profile:'Профиль'};
+  document.getElementById('pageTitle').textContent = titles[page];
+  document.getElementById('diaryTabs').style.display = 'none';
+  const mdt = document.getElementById('mobileDiaryTabs');
+  const mat = document.getElementById('mobileAnalyticsTabs');
+  if(mdt) mdt.style.display = page === 'diary'     ? 'flex' : 'none';
+  if(mat) mat.style.display = page === 'analytics' ? 'flex' : 'none';
+  if(page === 'analytics') renderAnalytics();
+  if(page === 'profile') { renderApiKeys(); renderBasisList(); }
+}
+
+// ── Мобильные вкладки дневника ─────────────────────────────────────────
+function mobileDiaryTab(tab, btn) {
+  document.querySelectorAll('#mobileDiaryTabs .mob-tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Переиспользуем showDiaryTab — он не зависит от event
+  ['trades','deals','orders','journal','transactions'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  if(tab === 'deals') { fetchOpenPositions(); }
+  else { renderSummary(); }
+  if(tab === 'orders')  fetchOrders();
+  if(tab === 'journal') renderJournal();
+  if(tab === 'trades')  renderTrades();
+}
+
+// ── Мобильные вкладки аналитики ────────────────────────────────────────
+function mobileAnalyticsTab(tab, btn) {
+  document.querySelectorAll('#mobileAnalyticsTabs .mob-tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const tabs = ['overview','symbols','heatmap','drawdown','top5','weekly'];
+  const ids  = { overview:'atab-overview', symbols:'atab-symbols', heatmap:'atab-heatmap', drawdown:'atab-drawdown', top5:'atab-top5', weekly:'atab-weekly' };
+  tabs.forEach(t => {
+    const el = document.getElementById(ids[t]);
+    if(el) el.style.display = t === tab ? '' : 'none';
+  });
 }
 
 // ===================== ORDERS =====================
@@ -3912,7 +4181,7 @@ async function fetchOrders() {
   body.innerHTML = '<div class="empty-state" style="padding:40px"><div style="font-size:22px">⏳</div><div class="empty-text">Загружаю ордера...</div></div>';
 
   const k      = apiKeys[0];
-  const secret = k.secret || sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+  const secret = k.secret || getStoredSecret(k.key);
   if(!secret) { body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔑</div><div class="empty-text">Секрет API не найден</div></div>'; return; }
 
   try {
