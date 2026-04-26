@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crypto Дневник Трейдера</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -107,6 +107,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 /* SUMMARY CARDS */
 .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .sum-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.sum-card.clickable { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.sum-card.clickable:hover { border-color: var(--accent); background: rgba(79,142,247,0.06); }
 .sum-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
 .sum-val { font-size: 22px; font-weight: 800; font-family: var(--mono); letter-spacing: -0.5px; }
 .sum-val.pos { color: var(--green); }
@@ -116,7 +118,77 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .sum-change.up span { color: var(--green); }
 .sum-change.down span { color: var(--red); }
 
-/* TABLE */
+/* PNL CHART MODAL */
+.pnl-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px); }
+.pnl-modal-overlay.open { display:flex; }
+.pnl-modal { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:min(96vw,1000px);max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow);animation:fadeIn 0.2s ease;overflow:hidden; }
+.pnl-modal-header { display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0; }
+.pnl-modal-title { font-size:15px;font-weight:700; }
+.pnl-period-tabs { display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:3px; }
+.pnl-period-btn { padding:5px 14px;border-radius:4px;border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;white-space:nowrap; }
+.pnl-period-btn:hover { color:var(--text); }
+.pnl-period-btn.active { background:var(--bg2);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+.pnl-custom-range { display:none;align-items:center;gap:8px;margin-left:8px; }
+.pnl-date-input { background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:5px 8px;color:var(--text);font-family:var(--mono);font-size:12px; }
+.pnl-date-input:focus { outline:none;border-color:var(--accent); }
+.pnl-modal-body { flex:1;padding:20px;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:16px; }
+.pnl-stats-row { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex-shrink:0; }
+.pnl-stat-card { background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px 14px; }
+.pnl-stat-label { font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px; }
+.pnl-stat-val { font-family:var(--mono);font-size:16px;font-weight:700; }
+.pnl-chart-wrap { flex:1;min-height:280px;position:relative; }
+#pnlChartCanvas { width:100%;height:100%; }
+
+/* SYMBOLS ANALYSIS */
+.sym-row { display:grid;grid-template-columns:180px 90px 70px 90px 80px 1fr 80px;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:center;font-size:12px; }
+.sym-row:hover { background:var(--bg3); }
+.sym-row:last-child { border-bottom:none; }
+.sym-bar-wrap { background:var(--bg3);border-radius:20px;height:8px;overflow:hidden;min-width:60px; }
+.sym-bar { height:100%;border-radius:20px;transition:width 0.4s ease; }
+
+/* HEATMAP */
+.hm-grid { display:grid;gap:3px;overflow-x:auto; }
+.hm-cell { border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:700;cursor:default;transition:transform 0.1s;position:relative;aspect-ratio:1;min-width:28px;min-height:28px; }
+.hm-cell:hover { transform:scale(1.15);z-index:2; }
+.hm-cell[title]:hover::after { content:attr(title);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:var(--bg1);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;white-space:nowrap;z-index:10;pointer-events:none; }
+.hm-label { font-size:10px;color:var(--text3);text-align:center;font-family:var(--mono); }
+.hm-best { background:rgba(34,209,160,0.15);border:1px solid rgba(34,209,160,0.4);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--green); }
+.hm-worst { background:rgba(247,81,106,0.1);border:1px solid rgba(247,81,106,0.3);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--red); }
+
+/* OPEN POSITIONS */
+.pos-row { display:grid;grid-template-columns:160px 60px 95px 95px 95px 90px 90px 80px 1fr;gap:8px;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px;transition:background 0.12s; }
+.pos-row:last-child { border-bottom:none; }
+.pos-row:hover { background:var(--bg3); }
+.pos-upnl-pos { color:var(--green);font-family:var(--mono);font-weight:700; }
+.pos-upnl-neg { color:var(--red);font-family:var(--mono);font-weight:700; }
+
+/* ORDERS */
+.order-grid { grid-template-columns:140px 90px 65px 130px 100px 100px 85px 85px 90px 130px !important; }
+.order-row  { display:grid;grid-template-columns:140px 90px 65px 130px 100px 100px 85px 85px 90px 130px;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px;transition:background 0.12s; }
+.order-row:last-child { border-bottom:none; }
+.order-row:hover { background:var(--bg3); }
+.o-badge { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap; }
+.o-entry   { background:rgba(34,209,160,0.12);color:#22d1a0;border:1px solid rgba(34,209,160,0.3); }
+.o-tp      { background:rgba(79,142,247,0.12);color:#4f8ef7;border:1px solid rgba(79,142,247,0.3); }
+.o-sl      { background:rgba(247,81,106,0.12);color:#f7516a;border:1px solid rgba(247,81,106,0.3); }
+.o-trigger { background:rgba(255,193,7,0.12);color:#ffc107;border:1px solid rgba(255,193,7,0.3); }
+.o-status  { display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700; }
+.o-status-new    { background:rgba(34,209,160,0.15);color:#22d1a0; }
+.o-status-partial{ background:rgba(255,193,7,0.15);color:#ffc107; }
+.o-status-untrig { background:rgba(147,112,219,0.15);color:#9370db; }
+.journal-grid { grid-template-columns:150px 110px 140px 100px 90px 90px 80px 90px !important; }
+.journal-row { display:grid;grid-template-columns:150px 110px 140px 100px 90px 90px 80px 90px;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px;transition:background 0.12s; }
+.journal-row:last-child { border-bottom:none; }
+.journal-row:hover { background:var(--bg3); }
+.j-badge { display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap; }
+.j-open  { background:rgba(34,209,160,0.12);color:#22d1a0;border:1px solid rgba(34,209,160,0.25); }
+.j-close { background:rgba(247,81,106,0.12);color:#f7516a;border:1px solid rgba(247,81,106,0.25); }
+.j-fund  { background:rgba(147,112,219,0.12);color:#9370db;border:1px solid rgba(147,112,219,0.25); }
+.j-fund-neg { background:rgba(255,160,0,0.10);color:#f7a600;border:1px solid rgba(255,160,0,0.25); }
+.journal-filter-group { display:flex;gap:3px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:3px; }
+.jf-btn { padding:4px 12px;border-radius:4px;border:none;background:transparent;color:var(--text2);font-family:var(--font);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s; }
+.jf-btn:hover { color:var(--text); }
+.jf-btn.active { background:var(--bg2);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.25); }
 .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .table-head { display: grid; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; gap: 8px; }
 .table-head.trades-grid, .trade-row .row-main { grid-template-columns: 26px 140px 70px 65px 90px 90px 90px 80px 70px 1fr 40px; }
@@ -213,12 +285,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 /* WEEKLY */
 .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
 .day-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-.day-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 8px; }
+.day-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 8px; }
 .day-pnl { font-family: var(--mono); font-size: 16px; font-weight: 800; margin-bottom: 6px; }
 .day-pnl.pos { color: var(--green); }
 .day-pnl.neg { color: var(--red); }
-.day-pnl.neutral { color: var(--text3); }
-.day-stats { font-size: 10px; color: var(--text3); line-height: 1.7; }
+.day-pnl.neutral { color: var(--text2); }
+.day-stats { font-size: 11px; color: var(--text2); line-height: 1.8; }
 .day-card.today { border-color: var(--accent); background: rgba(79,142,247,0.05); }
 
 /* PROFILE PANEL */
@@ -452,7 +524,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <div class="avatar">АТ</div>
         <div class="user-info">
           <div class="user-name">Алексей Трейдер</div>
-          <div class="user-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="bfded3dac7ffcbcddedbda91cfcdd0">[email&#160;protected]</a></div>
+          <div class="user-email">demo@bybit.com</div>
         </div>
       </div>
     </div>
@@ -465,7 +537,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div class="topbar-title" id="pageTitle">Крипто-Дневник</div>
       <div class="topbar-tabs" id="diaryTabs">
         <button class="tab-btn active" onclick="showDiaryTab('trades', this)">Трейды</button>
-        <button class="tab-btn" onclick="showDiaryTab('deals', this)">Сделки</button>
+        <button class="tab-btn" onclick="showDiaryTab('deals', this)">Открытые позиции</button>
+        <button class="tab-btn" onclick="showDiaryTab('orders', this)">Ордера</button>
+        <button class="tab-btn" onclick="showDiaryTab('journal', this)">Журнал событий</button>
         <button class="tab-btn" onclick="showDiaryTab('transactions', this)">Транзакции</button>
       </div>
       <div class="topbar-actions">
@@ -514,12 +588,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <div class="table-wrap">
             <div class="table-head trades-grid">
               <div></div>
-              <div class="th" onclick="sortTable('time')"><span>Дата/Время</span><span class="sort-arrow" id="sort-time">↕</span></div>
+              <div class="th" onclick="sortTable('time')"><span>Дата/Время</span><span class="sort-arrow" id="sort-time">↓</span></div>
               <div class="th" onclick="sortTable('symbol')"><span>Символ</span></div>
               <div>Напр.</div>
               <div class="th" onclick="sortTable('entry')"><span>Вход</span></div>
               <div class="th" onclick="sortTable('exit')"><span>Выход</span></div>
-              <div class="th sorted" onclick="sortTable('pnl')"><span>PnL $</span><span class="sort-arrow" id="sort-pnl">↓</span></div>
+              <div class="th" onclick="sortTable('pnl')"><span>PnL $</span><span class="sort-arrow" id="sort-pnl">↕</span></div>
               <div class="th" onclick="sortTable('pnlpct')"><span>PnL %</span><span class="sort-arrow" id="sort-pnlpct">↕</span></div>
               <div>Комиссия</div>
               <div>Основание</div>
@@ -529,28 +603,103 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           </div>
         </div>
 
-        <!-- DEALS TAB -->
+        <!-- OPEN POSITIONS TAB -->
         <div id="tab-deals" style="display:none">
-          <div class="filters-bar">
-            <select class="filter-select">
-              <option value="all">Весь период</option>
-              <option value="week" selected>Эта неделя</option>
-              <option value="month">Этот месяц</option>
-            </select>
+          <div class="filters-bar" style="margin-bottom:12px">
+            <span style="font-size:12px;color:var(--text3)">Открытые позиции в реальном времени</span>
             <div class="spacer"></div>
+            <span id="posLastUpdate" style="font-size:11px;color:var(--text3);font-family:var(--mono)"></span>
+            <button class="btn" style="font-size:11px;padding:5px 12px" onclick="fetchOpenPositions()">⟳ Обновить</button>
           </div>
           <div class="table-wrap">
-            <div class="table-head" style="grid-template-columns: 140px 90px 70px 100px 100px 80px 70px 1fr">
-              <div class="th">Дата/Время</div>
-              <div class="th">Символ</div>
+            <div class="table-head" style="grid-template-columns:160px 60px 95px 95px 95px 90px 90px 80px 1fr">
+              <div>Символ</div>
               <div>Напр.</div>
-              <div class="th">Цена</div>
-              <div class="th">Объём (USDT)</div>
-              <div class="th">Кол-во</div>
-              <div class="th">Комиссия</div>
-              <div>Трейд ID</div>
+              <div>Размер</div>
+              <div>Вход</div>
+              <div>Тек. цена</div>
+              <div>uPnL $</div>
+              <div>uPnL %</div>
+              <div>Плечо</div>
+              <div>Открыта</div>
             </div>
-            <div id="dealsBody"></div>
+            <div id="positionsBody">
+              <div class="empty-state" style="padding:40px">
+                <div class="empty-icon">📡</div>
+                <div class="empty-text">Нажмите «Обновить» или перейдите в этот раздел чтобы загрузить позиции</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ORDERS TAB -->
+        <div id="tab-orders" style="display:none">
+          <div class="filters-bar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <!-- Type filters -->
+            <div class="journal-filter-group">
+              <button class="jf-btn active" onclick="setOrderFilter('all',this)">Все</button>
+              <button class="jf-btn" onclick="setOrderFilter('entry',this)">🟢 Вход</button>
+              <button class="jf-btn" onclick="setOrderFilter('tp',this)">🎯 TP</button>
+              <button class="jf-btn" onclick="setOrderFilter('sl',this)">🛑 SL</button>
+              <button class="jf-btn" onclick="setOrderFilter('trigger',this)">⚡ Триггер</button>
+            </div>
+            <input class="filter-select" id="orderSearch" placeholder="Поиск по символу..." oninput="renderOrders()" style="width:180px;font-size:12px">
+            <div class="spacer"></div>
+            <span id="orderLastUpdate" style="font-size:11px;color:var(--text3);font-family:var(--mono)"></span>
+            <button class="btn" style="font-size:11px;padding:5px 12px" onclick="fetchOrders()">⟳ Обновить</button>
+          </div>
+          <div class="table-wrap">
+            <div class="table-head order-grid">
+              <div>Символ</div>
+              <div>Тип ордера</div>
+              <div>Напр.</div>
+              <div>Тип</div>
+              <div>Цена</div>
+              <div>Триггер</div>
+              <div>Кол-во</div>
+              <div>Объём</div>
+              <div>Статус</div>
+              <div>Создан</div>
+            </div>
+            <div id="ordersBody">
+              <div class="empty-state" style="padding:40px">
+                <div class="empty-icon">📋</div>
+                <div class="empty-text">Нажмите «Обновить» чтобы загрузить активные ордера</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- JOURNAL TAB -->
+        <div id="tab-journal" style="display:none">
+          <div class="filters-bar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <div class="journal-filter-group">
+              <button class="jf-btn active" data-type="all"    onclick="setJournalFilter('all',this)">Все</button>
+              <button class="jf-btn"        data-type="open"   onclick="setJournalFilter('open',this)">Открытия</button>
+              <button class="jf-btn"        data-type="close"  onclick="setJournalFilter('close',this)">Закрытия</button>
+              <button class="jf-btn"        data-type="fund"   onclick="setJournalFilter('fund',this)">Фандинг</button>
+            </div>
+            <input class="filter-select" id="journalSearch" placeholder="Поиск по символу..." oninput="renderJournal()" style="width:180px;font-size:12px">
+            <div class="spacer"></div>
+            <span id="journalCount" style="font-size:11px;color:var(--text3);align-self:center"></span>
+          </div>
+          <div class="table-wrap">
+            <div class="table-head journal-grid">
+              <div>Время</div>
+              <div>Символ</div>
+              <div>Событие</div>
+              <div>Цена / Ставка</div>
+              <div>Кол-во</div>
+              <div>Объём</div>
+              <div>Комиссия</div>
+              <div>PnL</div>
+            </div>
+            <div id="journalBody">
+              <div class="empty-state" style="padding:40px">
+                <div class="empty-icon">📋</div>
+                <div class="empty-text">Синхронизируйте данные чтобы увидеть журнал событий</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -584,6 +733,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <div class="analytics-tabs">
           <button class="a-tab active" onclick="showAnalyticsTab('dashboard', this)">Dashboard</button>
           <button class="a-tab" onclick="showAnalyticsTab('top5', this)">Топ-5</button>
+          <button class="a-tab" onclick="showAnalyticsTab('symbols', this)">По символам</button>
+          <button class="a-tab" onclick="showAnalyticsTab('heatmap', this)">Тепловая карта</button>
+          <button class="a-tab" onclick="showAnalyticsTab('drawdown', this)">Просадка</button>
           <button class="a-tab" onclick="showAnalyticsTab('bar', this)">Столбчатая</button>
           <button class="a-tab" onclick="showAnalyticsTab('line', this)">Линейный</button>
           <button class="a-tab" onclick="showAnalyticsTab('dailyloss', this)">Daily Loss</button>
@@ -705,16 +857,86 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <div id="atab-weekly" style="display:none">
           <div class="dash-card" style="margin-bottom:16px">
             <div class="dash-card-title">Недельная статистика</div>
-            <div class="pnl-row">
-              <div class="pnl-stat"><div class="pnl-stat-label">PnL за неделю</div><div class="pnl-stat-val" style="color:var(--green)">+$3,421</div></div>
-              <div class="pnl-stat"><div class="pnl-stat-label">Доходность</div><div class="pnl-stat-val" style="color:var(--green)">+15.4%</div></div>
-              <div class="pnl-stat"><div class="pnl-stat-label">Win Rate</div><div class="pnl-stat-val">66.7%</div></div>
-              <div class="pnl-stat"><div class="pnl-stat-label">Оборот</div><div class="pnl-stat-val">$284,320</div></div>
-              <div class="pnl-stat"><div class="pnl-stat-label">Комиссии</div><div class="pnl-stat-val" style="color:var(--red)">-$142</div></div>
+            <div class="pnl-row" id="weeklyStatsRow">
+              <div class="pnl-stat"><div class="pnl-stat-label">PnL за неделю</div><div class="pnl-stat-val" id="wkPnl">—</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Доходность</div><div class="pnl-stat-val" id="wkPct">—</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Win Rate</div><div class="pnl-stat-val" id="wkWr">—</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Оборот</div><div class="pnl-stat-val" id="wkVol">—</div></div>
+              <div class="pnl-stat"><div class="pnl-stat-label">Комиссии</div><div class="pnl-stat-val" id="wkFee" style="color:var(--red)">—</div></div>
             </div>
           </div>
           <div class="week-grid" id="weekGrid"></div>
         </div>
+        <!-- SYMBOLS TAB -->
+        <div id="atab-symbols" style="display:none">
+          <div class="dash-card">
+            <div class="dash-card-title" style="display:flex;justify-content:space-between;align-items:center">
+              <span>📊 Анализ по символам</span>
+              <div style="display:flex;gap:6px">
+                <button class="tab-btn active" id="symSortPnl" onclick="renderSymbols('pnl',this)" style="font-size:11px;padding:4px 10px">По PnL</button>
+                <button class="tab-btn" id="symSortCount" onclick="renderSymbols('count',this)" style="font-size:11px;padding:4px 10px">По кол-ву</button>
+                <button class="tab-btn" id="symSortWr" onclick="renderSymbols('wr',this)" style="font-size:11px;padding:4px 10px">По WR</button>
+              </div>
+            </div>
+            <div id="symbolsTable" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- HEATMAP TAB -->
+        <div id="atab-heatmap" style="display:none">
+          <div class="dash-card" style="margin-bottom:16px">
+            <div class="dash-card-title">🕐 Тепловая карта — PnL по дням и часам</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:16px">Цвет ячейки = средний PnL за все сделки в этот час этого дня недели</div>
+            <div id="heatmapGrid"></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:11px;color:var(--text3)">
+              <span>Убыток</span>
+              <div style="display:flex;gap:2px">
+                <div style="width:18px;height:18px;border-radius:3px;background:rgba(247,81,106,0.9)"></div>
+                <div style="width:18px;height:18px;border-radius:3px;background:rgba(247,81,106,0.5)"></div>
+                <div style="width:18px;height:18px;border-radius:3px;background:var(--bg3)"></div>
+                <div style="width:18px;height:18px;border-radius:3px;background:rgba(34,209,160,0.5)"></div>
+                <div style="width:18px;height:18px;border-radius:3px;background:rgba(34,209,160,0.9)"></div>
+              </div>
+              <span>Прибыль</span>
+              <span style="margin-left:16px;color:var(--text3)">· Пусто = нет сделок в это время</span>
+            </div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-title">⏰ Лучшее и худшее время для торговли</div>
+            <div id="heatmapStats" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <!-- DRAWDOWN TAB -->
+        <div id="atab-drawdown" style="display:none">
+          <div class="dash-card" style="margin-bottom:16px">
+            <div class="dash-card-title" style="display:flex;justify-content:space-between;align-items:center">
+              <span>📉 Кривая капитала и просадка</span>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin:14px 0">
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px">
+                <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Макс. просадка</div>
+                <div id="ddMaxVal" style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--red);margin-top:4px">—</div>
+                <div id="ddMaxPct" style="font-size:11px;color:var(--text3);margin-top:2px">—</div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px">
+                <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Тек. просадка</div>
+                <div id="ddCurVal" style="font-family:var(--mono);font-size:18px;font-weight:800;margin-top:4px">—</div>
+                <div id="ddCurPct" style="font-size:11px;color:var(--text3);margin-top:2px">—</div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px">
+                <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Пик капитала</div>
+                <div id="ddPeakVal" style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--accent);margin-top:4px">—</div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px">
+                <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Дней в просадке</div>
+                <div id="ddDaysVal" style="font-family:var(--mono);font-size:18px;font-weight:800;margin-top:4px">—</div>
+              </div>
+            </div>
+            <div style="position:relative;height:320px"><canvas id="drawdownCanvas"></canvas></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- PROFILE PAGE -->
@@ -793,7 +1015,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
             <div class="profile-section-title">👤 Аккаунт</div>
             <div class="profile-row">
               <div class="pr-label">E-mail</div>
-              <div class="pr-val"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c5a4a9a0bd85b1b7a4a1a0ebb5b7aa">[email&#160;protected]</a></div>
+              <div class="pr-val">demo@bybit.com</div>
             </div>
             <div class="profile-row">
               <div class="pr-label">Telegram</div>
@@ -929,7 +1151,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       </div>
       <div class="modal-field">
         <label>Название счёта</label>
-        <input class="modal-input" id="bb-name" placeholder="Мой Bybit Demo" value="Bybit Demo Trading">
+        <input class="modal-input" id="bb-name" placeholder="Например: Мой Bybit Demo" value="">
       </div>
       <div class="modal-field">
         <label>API Key</label>
@@ -989,7 +1211,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
             <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">1</div>
             <div>
               Скачайте <strong style="color:var(--text)">proxy.js</strong> и положите рядом с <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-family:var(--mono)">index.html</code><br>
-              <button class="btn primary" style="font-size:11px;margin-top:6px" onclick="downloadProxy()">⬇ Скачать proxy.js</button>
+              <button class="btn primary" style="font-size:11px;margin-top:6px" onclick="downloadProxy()">⬇ Скачать proxy.js + start_proxy.bat</button>
             </div>
           </div>
 
@@ -1076,7 +1298,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         </div>
         <div style="width:1px;height:24px;background:#2a2e39"></div>
         <div class="chart-pnl-item">
-          <div class="chart-pnl-label">Выход</div>
+          <div class="chart-pnl-label" id="tvExitLabel">Выход</div>
           <div class="chart-pnl-value" id="tvExitVal" style="color:#ef5350">—</div>
         </div>
         <div style="width:1px;height:24px;background:#2a2e39"></div>
@@ -1109,7 +1331,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         </div>
         <div class="trade-overlay-row">
           <div class="trade-overlay-dot" style="background:#ef5350"></div>
-          <div class="trade-overlay-label">Выход</div>
+          <div class="trade-overlay-label" id="overlayExitLabel">Выход</div>
           <div class="trade-overlay-val" id="overlayExit">—</div>
         </div>
         <div class="trade-overlay-row">
@@ -1127,7 +1349,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <span class="chart-info-stat-val" id="infoSymbol">—</span>
       </div>
       <div class="chart-info-stat">
-        <span class="chart-info-stat-label">Время сделки:</span>
+        <span class="chart-info-stat-label" id="infoTimeLabel">Время сделки:</span>
         <span class="chart-info-stat-val" id="infoTime">—</span>
       </div>
       <div class="chart-info-stat">
@@ -1135,15 +1357,64 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <span class="chart-info-stat-val" id="infoVol">—</span>
       </div>
       <div class="chart-info-stat">
-        <span class="chart-info-stat-label">Комиссия:</span>
+        <span class="chart-info-stat-label" id="infoFeeLabel">Комиссия:</span>
         <span class="chart-info-stat-val" id="infoFee" style="color:#ef5350">—</span>
       </div>
       <div class="chart-info-stat">
-        <span class="chart-info-stat-label">Основание:</span>
+        <span class="chart-info-stat-label" id="infoBasisLabel">Основание:</span>
         <span class="chart-info-stat-val" id="infoBasis" style="color:#a78bfa">—</span>
       </div>
       <div style="flex:1"></div>
-      <div style="font-size:10px;color:#363a45">📡 TradingView · Bybit Perpetual · данные в реальном времени</div>
+      <div style="font-size:10px;color:#363a45">📡 Lightweight Charts by TradingView · Bybit Perpetual · реальные данные</div>
+    </div>
+  </div>
+</div>
+
+<!-- PNL CHART MODAL -->
+<div class="pnl-modal-overlay" id="pnlChartModal" onclick="if(event.target===this)closePnlChart()">
+  <div class="pnl-modal" onclick="event.stopPropagation()">
+    <div class="pnl-modal-header">
+      <div class="pnl-modal-title">📈 График Прибыли / Убытка</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="pnl-period-tabs" id="pnlPeriodTabs">
+          <button class="pnl-period-btn" onclick="setPnlPeriod('today',this)">День</button>
+          <button class="pnl-period-btn" onclick="setPnlPeriod('week',this)">Неделя</button>
+          <button class="pnl-period-btn active" onclick="setPnlPeriod('month',this)">Месяц</button>
+          <button class="pnl-period-btn" onclick="setPnlPeriod('all',this)">Всё время</button>
+          <button class="pnl-period-btn" onclick="setPnlPeriod('custom',this)">Период</button>
+        </div>
+        <div class="pnl-custom-range" id="pnlCustomRange">
+          <input type="date" class="pnl-date-input" id="pnlDateFrom" oninput="renderPnlChart()">
+          <span style="color:var(--text3)">—</span>
+          <input type="date" class="pnl-date-input" id="pnlDateTo" oninput="renderPnlChart()">
+        </div>
+        <button class="btn btn-icon" onclick="closePnlChart()" style="font-size:16px;padding:5px 9px">×</button>
+      </div>
+    </div>
+    <div class="pnl-modal-body">
+      <!-- Stats row -->
+      <div class="pnl-stats-row">
+        <div class="pnl-stat-card">
+          <div class="pnl-stat-label">Итого PnL</div>
+          <div class="pnl-stat-val" id="pnlStatTotal">—</div>
+        </div>
+        <div class="pnl-stat-card">
+          <div class="pnl-stat-label">Win Rate</div>
+          <div class="pnl-stat-val" id="pnlStatWr" style="color:var(--accent)">—</div>
+        </div>
+        <div class="pnl-stat-card">
+          <div class="pnl-stat-label">Лучший день</div>
+          <div class="pnl-stat-val" id="pnlStatBest" style="color:var(--green)">—</div>
+        </div>
+        <div class="pnl-stat-card">
+          <div class="pnl-stat-label">Худший день</div>
+          <div class="pnl-stat-val" id="pnlStatWorst" style="color:var(--red)">—</div>
+        </div>
+      </div>
+      <!-- Chart -->
+      <div class="pnl-chart-wrap">
+        <canvas id="pnlChartCanvas"></canvas>
+      </div>
     </div>
   </div>
 </div>
@@ -1189,7 +1460,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 // ===================== DATA =====================
 const COINS = {
   BTC: {color:'#f7931a', icon:'₿'},
@@ -1203,12 +1474,27 @@ const COINS = {
 };
 
 let allBases = ['Пробой уровня', 'Откат к поддержке', 'Паттерн', 'Тренд', 'Дивергенция', 'Объёмный импульс'];
-let sortField = 'pnl', sortDir = -1;
+let sortField = 'time', sortDir = -1;
 let filterFav = false, filterDir = null, filterSymbol = '', filterBasis = '';
 
 let trades = []; // Populated via manual entry or Bybit Demo API sync
 
-// PnL calculated in calcPnl() at init
+// ── Local time formatting ─────────────────────────────────────────────────
+// Bybit API returns timestamps in UTC milliseconds.
+// We display them in the browser's LOCAL timezone (matches exchange display).
+function msToLocalStr(ms, includeSeconds) {
+  if(!ms) return '';
+  const d   = new Date(ms);
+  const pad = n => String(n).padStart(2, '0');
+  const base = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return includeSeconds ? base + ':' + pad(d.getSeconds()) : base;
+}
+function msToLocalDate(ms) {
+  if(!ms) return '';
+  const d = new Date(ms);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
 
 // ===================== BYBIT DEMO TRADING API =====================
 // ---- Proxy detection ----
@@ -1232,39 +1518,99 @@ async function probeProxy() {
   return proxyAvailable;
 }
 
-// ---- API Keys persistence (keys stored in localStorage, secrets in sessionStorage only) ----
+// ---- API Keys persistence — config.json через proxy ----
 let apiKeys = [];
+const CONFIG_URL = 'http://localhost:9001/config';
 
-function saveApiKeys() {
-  // Store only non-sensitive fields: name, key (masked display), exchange, date, active, balance
-  const safe = apiKeys.map(k => ({
-    name: k.name, key: k.key, exchange: k.exchange,
-    date: k.date, active: k.active, corsBlocked: k.corsBlocked,
-    balance: k.balance
-    // secret intentionally NOT stored persistently
-  }));
-  try { localStorage.setItem('bb_api_keys', JSON.stringify(safe)); } catch(e){}
+// Deduplicate apiKeys by API key string — keep only the latest entry per key
+function deduplicateApiKeys(list) {
+  const seen = {};
+  // Process in reverse so last entry wins (most recent)
+  for(let i = list.length - 1; i >= 0; i--) {
+    const k = list[i];
+    if(k.key && !seen[k.key]) seen[k.key] = k;
+  }
+  return Object.values(seen);
 }
 
-function loadApiKeys() {
+// Save to config.json — deduplicated, includes secret (local file only)
+async function saveApiKeys() {
+  const unique = deduplicateApiKeys(apiKeys);
+  apiKeys = unique; // keep in-memory deduplicated too
+
+  const data = { apiKeys: unique.map(k => ({
+    name       : k.name,
+    key        : k.key,
+    secret     : k.secret || '',
+    exchange   : k.exchange,
+    date       : k.date,
+    active     : k.active,
+    corsBlocked: k.corsBlocked,
+    balance    : k.balance,
+  }))};
+
+  try { localStorage.setItem('bb_api_keys', JSON.stringify(data)); } catch(e){}
+  try {
+    await fetch(CONFIG_URL, {
+      method : 'POST',
+      headers: {'Content-Type':'application/json'},
+      body   : JSON.stringify(data),
+    });
+  } catch(e) {}
+}
+
+// Load from config.json (proxy) or localStorage fallback
+async function loadApiKeys() {
+  try {
+    const resp = await fetch(CONFIG_URL);
+    console.log('[config] GET /config status:', resp.status, resp.ok);
+    if(resp.ok) {
+      const data = await resp.json();
+      console.log('[config] apiKeys в файле:', data.apiKeys?.length ?? 0,
+        data.apiKeys?.map(k => ({name:k.name, key:k.key?.slice(0,8), hasSecret:!!k.secret})));
+      if(data.apiKeys && data.apiKeys.length > 0) {
+        apiKeys = deduplicateApiKeys(
+          data.apiKeys.map(k => ({...k, secret: k.secret || null}))
+        );
+        console.log('[config] После дедупликации:', apiKeys.length, 'ключей');
+        if(apiKeys.length < data.apiKeys.length) {
+          saveApiKeys();
+        }
+        return;
+      } else {
+        console.warn('[config] apiKeys пуст или отсутствует в файле');
+      }
+    }
+  } catch(e) {
+    console.error('[config] Ошибка загрузки config.json:', e.message);
+  }
+
+  // Fallback: localStorage
   try {
     const raw = localStorage.getItem('bb_api_keys');
+    console.log('[config] Fallback localStorage:', raw ? 'есть данные' : 'пусто');
     if(raw) {
-      const parsed = JSON.parse(raw);
-      // Restore secrets from sessionStorage (set during current session)
-      apiKeys = parsed.map(k => {
-        const sess = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
-        return {...k, secret: sess || null};
-      });
+      const data = JSON.parse(raw);
+      apiKeys = deduplicateApiKeys(
+        (data.apiKeys || data).map(k => ({...k, secret: k.secret || null}))
+      );
     }
-  } catch(e){ apiKeys = []; }
+  } catch(e) { apiKeys = []; }
 }
 
 function saveSecretForSession(apiKey, secret) {
   try { sessionStorage.setItem('bb_secret_' + apiKey.slice(0,8), secret); } catch(e){}
 }
 
-loadApiKeys();
+// Init: load from config, then render and auto-sync if keys present
+loadApiKeys().then(async () => {
+  renderApiKeys();
+  // Auto-sync if we have keys with secrets loaded from config
+  const keysWithSecrets = apiKeys.filter(k => k.secret && k.key);
+  if(keysWithSecrets.length > 0) {
+    await syncAllKeys();
+  }
+});
 
 /* ---- HMAC-SHA256 via Web Crypto API ---- */
 async function hmacSha256(secret, message) {
@@ -1278,9 +1624,38 @@ async function hmacSha256(secret, message) {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
+/* ---- Bybit server time sync ---- */
+// Храним дельту: serverTime - localTime (в мс)
+let _bybitTimeDelta = 0;
+let _bybitTimeSynced = false;
+
+async function syncBybitTime() {
+  try {
+    const localBefore = Date.now();
+    const resp = await fetch(`${BYBIT_DEMO_BASE}/v5/market/time`);
+    const localAfter  = Date.now();
+    const data = await resp.json();
+    if (data.retCode !== 0) return;
+    // timeSecond — секунды, timeNano — наносекунды; берём timeSecond * 1000
+    const serverMs = parseInt(data.result.timeSecond) * 1000;
+    const localMid = Math.round((localBefore + localAfter) / 2);
+    _bybitTimeDelta  = serverMs - localMid;
+    _bybitTimeSynced = true;
+    console.log(`[time-sync] delta=${_bybitTimeDelta}ms (server=${serverMs}, local=${localMid})`);
+  } catch(e) {
+    console.warn('[time-sync] Не удалось синхронизировать время с Bybit:', e.message);
+  }
+}
+
+function getBybitTs() {
+  return (Date.now() + _bybitTimeDelta).toString();
+}
+
 /* ---- Build signed Bybit Demo request ---- */
 async function bybitDemoGet(path, params, apiKey, apiSecret) {
-  const ts = Date.now().toString();
+  // Синхронизируем время при первом запросе
+  if (!_bybitTimeSynced) await syncBybitTime();
+  const ts = getBybitTs();
   const recvWindow = '5000';
   const queryString = new URLSearchParams(params).toString();
   const preHash = ts + apiKey + recvWindow + queryString;
@@ -1297,30 +1672,277 @@ async function bybitDemoGet(path, params, apiKey, apiSecret) {
   return resp.json();
 }
 
-/* ---- Fetch closed PnL from Bybit Demo Trading ---- */
-async function fetchBybitDemoTrades(apiKey, apiSecret) {
-  const params = { category: 'linear', limit: '50' };
-  const data = await bybitDemoGet('/v5/position/closed-pnl', params, apiKey, apiSecret);
-  if (data.retCode !== 0) throw new Error(data.retMsg || 'Bybit API error');
-  return data.result.list.map(r => {
-    const dir   = r.side === 'Buy' ? 'Long' : 'Short';
-    const entry = parseFloat(r.avgEntryPrice);
-    const exit  = parseFloat(r.avgExitPrice);
-    const qty   = parseFloat(r.qty);
-    const vol   = entry * qty;
-    const fee   = parseFloat(r.cumEntryFee) + parseFloat(r.cumExitFee);
-    const funding = parseFloat(r.fundingFee || 0);
-    const pnl   = parseFloat(r.closedPnl);
-    const pnlPct = vol > 0 ? (pnl / vol) * 100 : 0;
-    const ts    = new Date(parseInt(r.updatedTime)).toISOString().slice(0,16).replace('T',' ');
+/* ---- Fetch ALL executions in 6-day chunks (Bybit max range = 7 days) ---- */
+async function fetchBybitDemoExecutions(apiKey, apiSecret, startTime, endTime) {
+  const feeMap       = {};
+  const execByOrdId  = {};
+  const execBySymbol = {};
+
+  const CHUNK_MS = 6 * 24 * 60 * 60 * 1000; // 6 days per request
+  let chunkEnd   = endTime;
+  let totalFetched = 0;
+
+  // Walk backwards in 6-day chunks until we reach startTime
+  while(chunkEnd > startTime) {
+    const chunkStart = Math.max(startTime, chunkEnd - CHUNK_MS);
+    let cursor = '';
+
+    try {
+      do {
+        const params = {
+          category  : 'linear',
+          limit     : '200',
+          startTime : String(chunkStart),
+          endTime   : String(chunkEnd),
+        };
+        if(cursor) params.cursor = cursor;
+
+        const data = await bybitDemoGet('/v5/execution/list', params, apiKey, apiSecret);
+        if(data.retCode !== 0) { cursor = ''; break; }
+
+        const page = data.result?.list || [];
+        totalFetched += page.length;
+
+        page.forEach(ex => {
+          const oid = ex.orderId || '';
+          const sym = ex.symbol  || '';
+          if(!oid || !sym) return;
+
+          feeMap[oid] = (feeMap[oid] || 0) + (parseFloat(ex.execFee) || 0);
+          if(ex.execType && ex.execType !== 'Trade') return;
+
+          const execMs  = parseInt(ex.execTime) || 0;
+          const execObj = {
+            execMs,
+            orderId      : oid,
+            orderIdShort : oid.replace(/-/g, '').slice(0, 16).toLowerCase(),
+            time         : execMs ? msToLocalStr(execMs, true) : '',
+            side         : ex.side      || '',
+            orderType    : ex.orderType || '',
+            price        : parseFloat(ex.execPrice) || 0,
+            qty          : parseFloat(ex.execQty)   || 0,
+            value        : parseFloat(ex.execValue) || 0,
+            fee          : parseFloat(ex.execFee)   || 0,
+          };
+
+          if(!execByOrdId[oid]) execByOrdId[oid] = execObj;
+          const oidKey = oid.replace(/-/g, '').toLowerCase();
+          if(!execByOrdId[oidKey]) execByOrdId[oidKey] = execObj;
+
+          if(!execBySymbol[sym]) execBySymbol[sym] = [];
+          execBySymbol[sym].push(execObj);
+        });
+
+        cursor = data.result?.nextPageCursor || '';
+        if(!page.length) break;
+      } while(cursor);
+    } catch(e) {
+      console.warn('[executions] chunk error:', e.message);
+    }
+
+    chunkEnd = chunkStart - 1;
+  }
+
+  console.debug(`[executions] fetched ${totalFetched} fills across ${Object.keys(execBySymbol).length} symbols`);
+
+  for(const sym in execBySymbol) {
+    execBySymbol[sym].sort((a, b) => a.execMs - b.execMs);
+  }
+  return { feeMap, execBySymbol, execByOrdId };
+}
+
+// Global execution cache (populated during sync)
+let _execBySymbol = {};   // symbol → executions[] sorted by time
+let _execByOrdId  = {};   // orderId (& stripped variant) → execution
+
+/* ---- Fetch ALL closed trades in 6-day chunks (Bybit max range = 7 days) ---- */
+async function fetchBybitDemoTrades(apiKey, apiSecret, onProgress) {
+  const allList  = [];
+  const seenOids = new Set();
+
+  const CHUNK_MS   = 6 * 24 * 60 * 60 * 1000;   // 6 дней на чанк
+  const DEPTH_DAYS = 180;                          // глубина истории (дней)
+  const endTs      = Date.now();
+  const startTs    = endTs - DEPTH_DAYS * 24 * 60 * 60 * 1000;
+
+  let chunkEnd = endTs;
+
+  // ── Идём назад чанками по 6 дней ──────────────────────────────────────
+  while(chunkEnd > startTs) {
+    const chunkStart = Math.max(startTs, chunkEnd - CHUNK_MS);
+    let cursor = '';
+
+    try {
+      do {
+        const params = {
+          category  : 'linear',
+          limit     : '200',
+          startTime : String(chunkStart),
+          endTime   : String(chunkEnd),
+        };
+        if(cursor) params.cursor = cursor;
+
+        const data = await bybitDemoGet('/v5/position/closed-pnl', params, apiKey, apiSecret);
+        if(data.retCode !== 0) { cursor = ''; break; }
+
+        const page = data.result?.list || [];
+        page.forEach(r => {
+          const oid = r.orderId || (r.symbol + '_' + r.updatedTime);
+          if(!seenOids.has(oid)) { seenOids.add(oid); allList.push(r); }
+        });
+
+        if(onProgress) onProgress(allList.length);
+        cursor = data.result?.nextPageCursor || '';
+        if(!page.length) break;
+      } while(cursor);
+    } catch(e) {
+      console.warn('[closed-pnl] chunk error:', e.message);
+    }
+
+    chunkEnd = chunkStart - 1;
+  }
+
+  console.log(`[closed-pnl] всего загружено: ${allList.length} записей за ${DEPTH_DAYS} дней`);
+
+  if(!allList.length) return [];
+
+  // ── Fetch executions для всего найденного диапазона ───────────────────
+  const { feeMap, execBySymbol, execByOrdId } = await fetchBybitDemoExecutions(apiKey, apiSecret, startTs, endTs);
+  // Merge into global caches
+  for(const sym in execBySymbol) {
+    if(!_execBySymbol[sym]) _execBySymbol[sym] = [];
+    const existing = new Set(_execBySymbol[sym].map(e => e.orderId + '_' + e.execMs));
+    execBySymbol[sym].forEach(e => {
+      if(!existing.has(e.orderId + '_' + e.execMs)) _execBySymbol[sym].push(e);
+    });
+    _execBySymbol[sym].sort((a, b) => a.execMs - b.execMs);
+  }
+  Object.assign(_execByOrdId, execByOrdId);
+
+  // ── Map each record to a trade object ───────────────────────────────────
+  // Build Set of ALL closing orderIds — executions with these orderIds are
+  // CLOSING fills and must NEVER be used as opening-fill matches
+  const closingOids = new Set(allList.map(r => r.orderId).filter(Boolean));
+  // Also add stripped (no-dash) variants for fuzzy matching
+  allList.forEach(r => { if(r.orderId) closingOids.add(r.orderId.replace(/-/g,'').toLowerCase()); });
+
+  const seen = new Set(); // deduplicate by orderId
+  const result = allList.filter(r => {
+    const oid = r.orderId || '';
+    if(seen.has(oid)) return false;
+    seen.add(oid);
+    return true;
+  }).map(r => {
+    // side in closed-pnl = CLOSING action:
+    //   Buy  = bought to close → position was SHORT
+    //   Sell = sold  to close → position was LONG
+    const dir    = r.side === 'Buy' ? 'Short' : 'Long';
+    const entry  = parseFloat(r.avgEntryPrice) || 0;
+    const exit   = parseFloat(r.avgExitPrice)  || 0;
+    const qty    = parseFloat(r.qty)           || 0;
+    const vol    = entry * qty;
+
+    const oid      = r.orderId || '';
+    const feeExec  = feeMap[oid] || 0;
+    const feeInline = (parseFloat(r.cumEntryFee)||0) + (parseFloat(r.cumExitFee)||0);
+    const feeEst   = vol * 0.00055 * 2;
+    const fee      = feeExec > 0 ? feeExec : feeInline > 0 ? feeInline : (vol > 0 ? feeEst : 0);
+
+    const funding  = parseFloat(r.fundingFee) || 0;
+    const pnl      = parseFloat(r.closedPnl)  || 0;
+    const pnlPct   = vol > 0 ? (pnl / vol) * 100 : 0;
+
+    // ── Resolve timestamps from EXECUTION data ────────────────────────────
+    const sym      = r.symbol;
+    const symExecs = execBySymbol[sym] || [];
+
+    const oidStripped = oid.replace(/-/g, '').toLowerCase();
+    const openSide    = dir === 'Long' ? 'Buy'  : 'Sell';
+    const closeSide   = dir === 'Long' ? 'Sell' : 'Buy';
+
+    // ── Strategy A: find close fill by orderId (most reliable) ────────────
+    let bestCloseExec = execByOrdId[oid]
+                     || execByOrdId[oidStripped]
+                     || symExecs.find(e => e.orderId === oid);
+
+    // ── Strategy B: find close by side + price if orderId not found ───────
+    if(!bestCloseExec) {
+      const priceEps = 0.015; // 1.5%
+      bestCloseExec = symExecs
+        .filter(e => e.side === closeSide
+                  && Math.abs(e.price - exit) / (exit || 1) < priceEps)
+        .sort((a, b) => b.execMs - a.execMs)[0];
+    }
+
+    const rawUpdated = parseInt(r.updatedTime) || 0;
+    const updatedMs  = rawUpdated > 1e12 ? rawUpdated : rawUpdated * 1000;
+    const exitTsMs   = bestCloseExec?.execMs || updatedMs || Date.now();
+
+    // ── Strategy for open fill: TIME-BASED, not price-based ───────────────
+    // avgEntryPrice in closed-pnl may be mark price (from funding), not actual fill price.
+    // Safest approach: find the most recent Trade-fill of the opening side
+    // for this symbol, BEFORE exitTs, excluding known closing-order executions.
+    //
+    // "Closing-order" executions = executions whose orderId is in closingOids
+    // (i.e. they are the CLOSING action of some other position — not an opening fill).
+    const openCandidates = symExecs.filter(e =>
+      e.side === openSide &&
+      e.execMs < exitTsMs + 5000 &&          // must start before close
+      !closingOids.has(e.orderId) &&          // not a closing fill of any position
+      !closingOids.has(e.orderIdShort)
+    );
+
+    // ── Entry timestamp ────────────────────────────────────────────────────
+    // IMPORTANT: createdTime from closed-pnl is NOT reliable for entry time.
+    // Bybit may set it to: funding event time, position record creation time,
+    // or other metadata — NOT necessarily the actual Trade fill time.
+    //
+    // The actual Trade fill is in /v5/execution/list (execType=Trade, side=openSide).
+    // We use it as PRIMARY. createdTime is only a last-resort fallback.
+    const rawCreated = parseInt(r.createdTime) || 0;
+    const createdMs  = rawCreated > 1e12 ? rawCreated : (rawCreated > 0 ? rawCreated * 1000 : 0);
+
+    // Find the actual opening Trade-fill from execution list
+    const bestOpenExec = symExecs
+      .filter(e => e.side === openSide
+                && e.execMs < exitTsMs + 5000       // must be before close
+                && !closingOids.has(e.orderId)       // not a closing fill
+                && !closingOids.has(e.orderIdShort))
+      .sort((a, b) => {
+        // Sort by qty match first, then most recent
+        const qtyMatchA = Math.abs(a.qty - qty) / (qty || 1);
+        const qtyMatchB = Math.abs(b.qty - qty) / (qty || 1);
+        if(Math.abs(qtyMatchA - qtyMatchB) > 0.05) return qtyMatchA - qtyMatchB;
+        return b.execMs - a.execMs;
+      })[0];
+
+    // PRIMARY: actual Trade-fill time (execType=Trade, from execution list)
+    // FALLBACK: createdTime from position metadata (less reliable)
+    const entryTsMs = bestOpenExec?.execMs
+                   || (createdMs > 0 && createdMs < exitTsMs ? createdMs : 0)
+                   || exitTsMs;
+
+    console.debug(`[${sym}] exit=${msToLocalStr(exitTsMs)} entry=${msToLocalStr(entryTsMs)} openExec=${bestOpenExec ? msToLocalStr(bestOpenExec.execMs) : 'none'} created=${msToLocalStr(createdMs)}`);
+
+    // Display time in local timezone (matches exchange display)
+    const ts = msToLocalStr(exitTsMs);
+
     return {
-      id: parseInt(r.orderId?.slice(-6)) || Date.now(),
-      time: ts, symbol: r.symbol, dir, entry, exit,
-      vol, qty, fee, funding,
-      basis: 'Не указано', comment: '', fav: false, pnl, pnlPct,
-      source: 'bybit-demo'
+      id       : parseInt(oid.slice(-8)) || Math.floor(Math.random() * 1e9),
+      orderId  : oid,
+      time     : ts,
+      symbol   : sym,
+      dir, entry, exit, vol, qty, fee, funding, pnl, pnlPct,
+      entryTs  : entryTsMs,
+      exitTs   : exitTsMs,
+      basis    : 'Не указано',
+      comment  : '',
+      fav      : false,
+      source   : 'bybit-demo',
     };
   });
+
+  return result;
 }
 
 /* ---- Fetch wallet balance from Bybit Demo Trading ---- */
@@ -1336,20 +1958,46 @@ async function fetchBybitDemoBalance(apiKey, apiSecret) {
   };
 }
 
-// Sub-deals per trade (simulated)
+// Returns real executions if available from Bybit API, otherwise synthesises 2 fills
 function getSubDeals(trade) {
-  const n = Math.floor(Math.random()*2)+2;
-  const deals = [];
-  for(let i=0;i<n;i++){
-    deals.push({
-      time: trade.time,
-      dir: i % 2 === 0 ? trade.dir : (trade.dir === 'Long' ? 'Sell' : 'Buy'),
-      price: i === 0 ? trade.entry : trade.exit,
-      vol: (trade.vol/n).toFixed(2),
-      fee: (trade.fee/n).toFixed(3),
-    });
+  // Look up all executions for this symbol within [entryTs, exitTs] window
+  // This captures BOTH the opening order (entry) and closing order (exit)
+  // regardless of their orderId — position lifecycle is bound by time
+  const symExecs = _execBySymbol[trade.symbol] || [];
+
+  if(symExecs.length > 0 && trade.entryTs && trade.exitTs) {
+    // Use a window slightly wider than position duration (±5 sec for latency)
+    const windowStart = trade.entryTs - 5000;
+    const windowEnd   = trade.exitTs  + 5000;
+
+    const fills = symExecs.filter(ex =>
+      ex.execMs >= windowStart && ex.execMs <= windowEnd
+    );
+
+    if(fills.length > 0) {
+      return fills.map(ex => ({
+        time     : ex.time,
+        dir      : ex.side,        // Buy / Sell
+        orderType: ex.orderType,   // Limit / Market
+        price    : ex.price,
+        vol      : ex.value > 0 ? ex.value : ex.price * ex.qty,
+        qty      : ex.qty,
+        fee      : ex.fee,
+        real     : true,
+      }));
+    }
   }
-  return deals;
+
+  // Fallback: synthesise open + close from trade-level data
+  const openSide  = trade.dir === 'Long' ? 'Buy'  : 'Sell';
+  const closeSide = trade.dir === 'Long' ? 'Sell' : 'Buy';
+  const halfFee   = ((trade.fee || 0) / 2).toFixed(3);
+  const entryTime = trade.entryTs ? msToLocalStr(trade.entryTs, true) : trade.time;
+  const exitTime  = trade.exitTs  ? msToLocalStr(trade.exitTs,  true) : trade.time;
+  return [
+    { time: entryTime, dir: openSide,  orderType: '', price: trade.entry, vol: trade.vol, qty: trade.qty, fee: halfFee, real: false },
+    { time: exitTime,  dir: closeSide, orderType: '', price: trade.exit,  vol: trade.vol, qty: trade.qty, fee: halfFee, real: false },
+  ];
 }
 
 // ===================== RENDER =====================
@@ -1357,42 +2005,125 @@ function getCoinKey(symbol) { return symbol.replace('USDT','').replace('PERP',''
 function getCoin(symbol) { const k = getCoinKey(symbol); return COINS[k] || {color:'#4f8ef7', icon:'◎'}; }
 
 function renderSummary() {
-  const total = trades.reduce((s,t)=>s+t.pnl,0);
-  const wins = trades.filter(t=>t.pnl>0).length;
-  const n = trades.length || 1;
-  const wr = ((wins / n) * 100).toFixed(1);
-  const totalFee = trades.reduce((s,t)=>s+t.fee+(t.funding||0),0);
-  const totalVol = trades.reduce((s,t)=>s+t.vol,0);
-  const avgPnl = total / n;
-  // Get equity from first connected key if available
-  const equity = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalEquity : null;
-  const pctStr = equity ? ((total/equity)*100).toFixed(2) : '—';
+  // Apply the same period filter as the trades table
+  const filtered = applyPeriodFilter([...trades]);
+
+  const total    = filtered.reduce((s,t)=>s+t.pnl, 0);
+  const wins     = filtered.filter(t=>t.pnl>0).length;
+  const n        = filtered.length || 1;
+  const wr       = ((wins / n) * 100).toFixed(1);
+  const totalFee = filtered.reduce((s,t)=>s+(t.fee||0)+(t.funding||0), 0);
+  const totalVol = filtered.reduce((s,t)=>s+(t.vol||0), 0);
+  const avgPnl   = total / n;
+  const equity   = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalEquity   : null;
+  const balance  = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalBalance  : null;
+  const upnl     = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.unrealisedPnl : null;
+
+  // Period label for display
+  const periodLabels = { today:'Сегодня', week:'Эта неделя', month:'Этот месяц', all:'Весь период', custom:'Свой период' };
+  const periodLabel  = periodLabels[filterPeriod] || 'Весь период';
+  const showAll      = filtered.length === trades.length && trades.length > 0;
+
   const grid = document.getElementById('summaryGrid');
+  grid.style.gridTemplateColumns = equity !== null ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)';
+
+  const balCard = equity !== null ? `
+    <div class="sum-card" style="border-color:rgba(79,142,247,0.3);background:rgba(79,142,247,0.06)">
+      <div class="sum-label">💰 Баланс Demo</div>
+      <div class="sum-val" style="color:var(--accent)">$${equity.toFixed(2)}</div>
+      <div class="sum-change">
+        Кошелёк <span>$${(balance||0).toFixed(2)}</span>
+        ${upnl !== null ? ` &nbsp;uPnL <span style="color:${upnl>=0?'var(--green)':'var(--red)'}">${upnl>=0?'+':''}$${upnl.toFixed(2)}</span>` : ''}
+      </div>
+    </div>` : '';
+
   grid.innerHTML = `
-    <div class="sum-card">
-      <div class="sum-label">Итого PnL</div>
+    <div class="sum-card clickable" onclick="openPnlChart()" title="Нажмите для просмотра графика PnL">
+      <div class="sum-label">📈 Итого PnL</div>
       <div class="sum-val ${total>=0?'pos':'neg'}">${total>=0?'+':''}$${total.toFixed(2)}</div>
-      <div class="sum-change ${total>=0?'up':'down'}">За период <span>${equity ? (total>=0?'+':'') + pctStr + '%' : trades.length + ' сделок'}</span></div>
+      <div class="sum-change ${total>=0?'up':'down'}">
+        ${periodLabel} <span>${equity && !showAll ? (total>=0?'+':'')+((total/equity)*100).toFixed(2)+'%' : filtered.length+' сделок'}</span>
+      </div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Win Rate</div>
-      <div class="sum-val" style="color:var(--accent)">${trades.length ? wr + '%' : '—'}</div>
-      <div class="sum-change">Побед <span>${wins}</span> из ${trades.length}</div>
+      <div class="sum-val" style="color:var(--accent)">${filtered.length ? wr + '%' : '—'}</div>
+      <div class="sum-change">Побед <span>${wins}</span> из <span>${filtered.length}</span></div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Комиссии</div>
+      <div class="sum-label">Комиссии + Фандинг</div>
       <div class="sum-val ${totalFee>0?'neg':''}">${totalFee>0?'-':''}$${totalFee.toFixed(2)}</div>
-      <div class="sum-change">Оборот <span>$${(totalVol/1000).toFixed(1)}K</span></div>
+      <div class="sum-change">Оборот <span>$${totalVol>=1000?(totalVol/1000).toFixed(1)+'K':totalVol.toFixed(0)}</span></div>
     </div>
     <div class="sum-card">
       <div class="sum-label">Сделок</div>
-      <div class="sum-val" style="color:var(--text)">${trades.length}</div>
-      <div class="sum-change">Avg PnL <span style="color:${avgPnl>=0?'var(--green)':'var(--red)'}">$${trades.length ? avgPnl.toFixed(2) : '0.00'}</span></div>
+      <div class="sum-val" style="color:var(--text)">${filtered.length}</div>
+      <div class="sum-change">Avg PnL <span style="color:${avgPnl>=0?'var(--green)':'var(--red)'}">$${filtered.length ? avgPnl.toFixed(2) : '0.00'}</span></div>
     </div>
+    ${balCard}
   `;
 }
 
+function renderSummaryPositions(positions) {
+  const grid = document.getElementById('summaryGrid');
+  if(!grid) return;
+
+  const pos = positions || _openPositions || [];
+  const count    = pos.length;
+  const totalU   = pos.reduce((s,p) => s + (parseFloat(p.unrealisedPnl)||0), 0);
+  const totalVol = pos.reduce((s,p) => s + (parseFloat(p.positionValue)||0), 0);
+  const equity   = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalEquity  : null;
+  const balance  = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalBalance : null;
+  const longs    = pos.filter(p => p.side === 'Buy').length;
+  const shorts   = pos.filter(p => p.side === 'Sell').length;
+  const upnlPct  = totalVol > 0 ? (totalU / totalVol * 100) : 0;
+
+  grid.style.gridTemplateColumns = equity !== null ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)';
+
+  const balCard = equity !== null ? `
+    <div class="sum-card" style="border-color:rgba(79,142,247,0.3);background:rgba(79,142,247,0.06)">
+      <div class="sum-label">💰 Баланс Demo</div>
+      <div class="sum-val" style="color:var(--accent)">$${equity.toFixed(2)}</div>
+      <div class="sum-change">Кошелёк <span>$${(balance||0).toFixed(2)}</span></div>
+    </div>` : '';
+
+  grid.innerHTML = `
+    <div class="sum-card">
+      <div class="sum-label">📡 Открытые позиции</div>
+      <div class="sum-val" style="color:var(--text)">${count}</div>
+      <div class="sum-change">Long <span style="color:var(--green)">${longs}</span> &nbsp;·&nbsp; Short <span style="color:var(--red)">${shorts}</span></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Нереализ. PnL</div>
+      <div class="sum-val ${totalU>=0?'pos':'neg'}">${totalU>=0?'+':''}$${totalU.toFixed(2)}</div>
+      <div class="sum-change ${totalU>=0?'up':'down'}">
+        <span>${upnlPct>=0?'+':''}${upnlPct.toFixed(2)}%</span> от объёма
+      </div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Объём позиций</div>
+      <div class="sum-val" style="color:var(--text)">$${totalVol>=1000?(totalVol/1000).toFixed(2)+'K':totalVol.toFixed(2)}</div>
+      <div class="sum-change">Всего в рынке</div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-label">Avg uPnL</div>
+      <div class="sum-val ${count>0&&totalU/count>=0?'pos':'neg'}">
+        ${count>0?(totalU/count>=0?'+':'')+'$'+(totalU/count).toFixed(2):'—'}
+      </div>
+      <div class="sum-change">На позицию</div>
+    </div>
+    ${balCard}
+  `;
+}
+
+
 function renderTrades() {
+  // Синхронизируем select с текущим состоянием фильтра
+  const sel = document.getElementById('periodFilter');
+  if(sel && sel.value !== filterPeriod) sel.value = filterPeriod;
+  const cdr = document.getElementById('customDateRange');
+  if(cdr) cdr.style.display = filterPeriod === 'custom' ? 'flex' : 'none';
+
   let data = applyPeriodFilter([...trades]);
   if(filterFav) data = data.filter(t=>t.fav);
   if(filterDir) data = data.filter(t=>t.dir === filterDir);
@@ -1448,7 +2179,7 @@ function renderTrades() {
         <div class="cell mono">$${t.exit.toLocaleString('ru', {minimumFractionDigits:2,maximumFractionDigits:4})}</div>
         <div class="cell mono ${t.pnl>=0?'pos':'neg'}">${t.pnl>=0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</div>
         <div class="cell mono ${t.pnlPct>=0?'pos':'neg'}">${t.pnlPct>=0?'+':''}${Math.abs(t.pnlPct).toFixed(2)}%</div>
-        <div class="cell mono" style="color:var(--red)">-$${t.fee.toFixed(2)}</div>
+        <div class="cell mono" style="color:var(--red)">-$${(t.fee||0).toFixed(2)}</div>
         <div class="cell"><span class="basis-tag">${t.basis}</span></div>
         <div class="cell"><span class="fav-star ${t.fav?'active':''}" onclick="event.stopPropagation();toggleFav(${t.id},this)">${t.fav?'★':'☆'}</span></div>
       </div>
@@ -1456,23 +2187,23 @@ function renderTrades() {
         <div class="expanded-grid">
           <div class="exp-card">
             <div class="exp-label">Объём позиции</div>
-            <div class="exp-val">$${t.vol.toLocaleString()}</div>
+            <div class="exp-val">$${t.vol >= 1000 ? (t.vol/1000).toFixed(2)+'K' : t.vol.toFixed(2)}</div>
           </div>
           <div class="exp-card">
             <div class="exp-label">Кол-во</div>
-            <div class="exp-val">${t.qty} ${ck}</div>
+            <div class="exp-val">${t.qty % 1 === 0 ? t.qty.toFixed(0) : t.qty.toFixed(4)} ${ck}</div>
           </div>
           <div class="exp-card">
             <div class="exp-label">Фандинг</div>
-            <div class="exp-val neg">-$${t.funding.toFixed(3)}</div>
+            <div class="exp-val ${(t.funding||0)>0?'neg':''}" >-$${(t.funding||0).toFixed(3)}</div>
           </div>
           <div class="exp-card">
             <div class="exp-label">PnL без комиссий</div>
-            <div class="exp-val ${(t.pnl+t.fee+t.funding)>=0?'pos':'neg'}">${(t.pnl+t.fee+t.funding)>=0?'+':''}$${Math.abs(t.pnl+t.fee+t.funding).toFixed(2)}</div>
+            <div class="exp-val ${(t.pnl+(t.fee||0)+(t.funding||0))>=0?'pos':'neg'}">${(t.pnl+(t.fee||0)+(t.funding||0))>=0?'+':''}$${Math.abs(t.pnl+(t.fee||0)+(t.funding||0)).toFixed(2)}</div>
           </div>
           <div class="exp-card">
             <div class="exp-label">Комиссия</div>
-            <div class="exp-val neg">-$${t.fee.toFixed(3)}</div>
+            <div class="exp-val neg">-$${(t.fee||0).toFixed(3)}</div>
           </div>
           <div class="exp-card">
             <div class="exp-label">Основание</div>
@@ -1480,19 +2211,30 @@ function renderTrades() {
           </div>
         </div>
         <div class="sub-deals">
-          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Составляющие сделки</div>
-          <div class="sub-deal-head">
-            <div>Время</div><div>Тип</div><div>Цена</div><div>Объём</div><div>Комиссия</div><div></div><div></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
+            Составляющие сделки
+            ${subDeals.length && subDeals[0].real ? '' : '<span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:6px">(расчётные данные)</span>'}
           </div>
-          ${subDeals.map((d,i)=>`
-          <div class="sub-deal">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${t.time}</div>
-            <div><span class="badge ${d.dir==='Long'||d.dir==='Buy'?'long':'short'}">${d.dir}</span></div>
-            <div style="font-family:var(--mono);font-size:11px">$${parseFloat(d.price).toFixed(4)}</div>
-            <div style="font-family:var(--mono);font-size:11px">$${d.vol}</div>
-            <div style="font-family:var(--mono);font-size:11px;color:var(--red)">-$${d.fee}</div>
-            <div></div><div></div>
-          </div>`).join('')}
+          <div class="sub-deal-head" style="grid-template-columns:140px 60px 90px 80px 80px 80px">
+            <div>Время</div><div>Ордер</div><div>Цена</div><div>Кол-во</div><div>Объём</div><div>Комиссия</div>
+          </div>
+          ${subDeals.map(d => {
+            const isBuy  = d.dir === 'Buy';
+            const price  = parseFloat(d.price)||0;
+            const qty    = parseFloat(d.qty)  ||0;
+            const vol    = parseFloat(d.vol)  || price * qty;
+            const fee    = parseFloat(d.fee)  ||0;
+            const priceDec = price < 0.001 ? 7 : price < 0.01 ? 5 : price < 1 ? 4 : price < 100 ? 3 : 2;
+            return `
+          <div class="sub-deal" style="grid-template-columns:140px 60px 90px 80px 80px 80px">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${d.time || t.time}</div>
+            <div><span class="badge ${isBuy?'long':'short'}">${d.dir}</span>${d.orderType ? `<span style="font-size:9px;color:var(--text3);margin-left:3px">${d.orderType}</span>` : ''}</div>
+            <div style="font-family:var(--mono);font-size:11px">$${price.toFixed(priceDec)}</div>
+            <div style="font-family:var(--mono);font-size:11px">${qty > 0 ? qty.toLocaleString('en') : '—'}</div>
+            <div style="font-family:var(--mono);font-size:11px">$${vol.toFixed(2)}</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--red)">-$${fee.toFixed(4)}</div>
+          </div>`;
+          }).join('')}
         </div>
         <div class="exp-comment">
           <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Комментарий</div>
@@ -1508,32 +2250,96 @@ function renderTrades() {
   }).join('');
 }
 
-function renderDeals() {
-  const allDeals = [];
-  trades.forEach(t => {
-    const sub = getSubDeals(t);
-    sub.forEach((d,i) => allDeals.push({...d, tradeId: t.id, symbol: t.symbol, time: t.time}));
-  });
-  const body = document.getElementById('dealsBody');
-  if(!allDeals.length) {
-    body.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Нет сделок для отображения</div></div>';
+/* ---- Open Positions (live from Bybit) ---- */
+let _openPositions = [];
+
+async function fetchOpenPositions() {
+  const body = document.getElementById('positionsBody');
+  if(!body) return;
+  if(!apiKeys.length || !apiKeys[0].secret) {
+    body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔑</div><div class="empty-text">Подключите API-ключ чтобы видеть открытые позиции</div></div>';
     return;
   }
-  body.innerHTML = allDeals.map(d => {
-    const coin = getCoin(d.symbol);
-    const ck = getCoinKey(d.symbol);
-    return `
-    <div class="tx-row" style="grid-template-columns:140px 90px 70px 100px 100px 80px 70px 1fr">
-      <div style="font-family:var(--mono);font-size:11px">${d.time}</div>
-      <div>
-        <div style="font-weight:700;font-size:12px">${ck}USDT</div>
+  body.innerHTML = '<div class="empty-state" style="padding:40px"><div style="font-size:22px">⏳</div><div class="empty-text">Загружаю позиции...</div></div>';
+
+  const k = apiKeys[0];
+  const secret = k.secret || sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+  if(!secret) {
+    body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔑</div><div class="empty-text">Секрет API не найден — переподключите аккаунт</div></div>';
+    return;
+  }
+
+  try {
+    const data = await bybitDemoGet('/v5/position/list', { category: 'linear', settleCoin: 'USDT' }, k.key, secret);
+    if(data.retCode !== 0) throw new Error(data.retMsg || 'Bybit error');
+
+    _openPositions = (data.result?.list || []).filter(p => parseFloat(p.size) > 0);
+
+    // Fetch mark prices for accurate current price display
+    const now = new Date().toLocaleTimeString('ru', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const lbl = document.getElementById('posLastUpdate');
+    if(lbl) lbl.textContent = `Обновлено ${now}`;
+
+    renderOpenPositions(_openPositions);
+    renderSummaryPositions(_openPositions);
+  } catch(e) {
+    body.innerHTML = `<div class="empty-state" style="padding:40px"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function renderOpenPositions(positions) {
+  const body = document.getElementById('positionsBody');
+  if(!body) return;
+
+  if(!positions.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">✅</div><div class="empty-text">Открытых позиций нет</div></div>';
+    return;
+  }
+
+  // Sort by unrealised PnL descending
+  const sorted = [...positions].sort((a, b) => parseFloat(b.unrealisedPnl) - parseFloat(a.unrealisedPnl));
+
+  body.innerHTML = sorted.map(p => {
+    const sym      = p.symbol;
+    const ck       = getCoinKey(sym);
+    const coin     = getCoin(sym);
+    const isLong   = p.side === 'Buy';
+    const dir      = isLong ? 'Long' : 'Short';
+    const entry    = parseFloat(p.avgPrice)       || 0;
+    const markPx   = parseFloat(p.markPrice)      || 0;
+    const size     = parseFloat(p.size)           || 0;
+    const val      = parseFloat(p.positionValue)  || size * entry;
+    const upnl     = parseFloat(p.unrealisedPnl)  || 0;
+    const upnlPct  = val > 0 ? (upnl / val) * 100 : 0;
+    const lev      = parseFloat(p.leverage)       || 1;
+    const created  = p.createdTime ? msToLocalStr(parseInt(p.createdTime) > 1e12
+                     ? parseInt(p.createdTime)
+                     : parseInt(p.createdTime) * 1000) : '—';
+
+    const pFmt = v => v < 0.001 ? v.toFixed(6) : v < 0.01 ? v.toFixed(5) : v < 1 ? v.toFixed(4) : v < 100 ? v.toFixed(3) : v.toFixed(2);
+    const upnlClass = upnl >= 0 ? 'pos-upnl-pos' : 'pos-upnl-neg';
+    const upnlSign  = upnl >= 0 ? '+' : '';
+    const pctSign   = upnlPct >= 0 ? '+' : '';
+
+    return `<div class="pos-row">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="openPositionChart('${sym}')" title="Открыть график">
+        <div class="coin-icon" style="background:${coin.color};width:26px;height:26px;font-size:11px;flex-shrink:0">${coin.icon}</div>
+        <div>
+          <div style="font-weight:700;font-size:12px;text-decoration:underline dotted;text-decoration-color:var(--text3)">${ck}</div>
+          <div style="font-size:10px;color:var(--accent)">📊 График</div>
+        </div>
       </div>
-      <div><span class="badge ${d.dir==='Long'||d.dir==='Buy'?'long':'short'}">${d.dir==='Long'||d.dir==='Buy'?'▲ Buy':'▼ Sell'}</span></div>
-      <div style="font-family:var(--mono);font-size:12px">$${parseFloat(d.price).toFixed(4)}</div>
-      <div style="font-family:var(--mono);font-size:12px">$${d.vol}</div>
-      <div style="font-family:var(--mono);font-size:12px">${(parseFloat(d.vol)/parseFloat(d.price)).toFixed(4)}</div>
-      <div style="font-family:var(--mono);font-size:12px;color:var(--red)">-$${d.fee}</div>
-      <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">#${d.tradeId.toString().padStart(6,'0')}</div>
+      <div><span class="badge ${isLong?'long':'short'}">${isLong?'▲':'▼'} ${dir}</span></div>
+      <div style="font-family:var(--mono)">
+        <div>$${val>=1000?(val/1000).toFixed(2)+'K':val.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--text3)">${size} ${ck}</div>
+      </div>
+      <div style="font-family:var(--mono)">$${pFmt(entry)}</div>
+      <div style="font-family:var(--mono);color:${markPx>entry?(isLong?'var(--green)':'var(--red)'):(markPx<entry?(!isLong?'var(--green)':'var(--red)'):'var(--text)')}">$${pFmt(markPx)}</div>
+      <div class="${upnlClass}">${upnlSign}$${Math.abs(upnl).toFixed(2)}</div>
+      <div class="${upnlClass}">${pctSign}${Math.abs(upnlPct).toFixed(2)}%</div>
+      <div style="font-family:var(--mono);font-size:11px">${lev}×</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${created}</div>
     </div>`;
   }).join('');
 }
@@ -1678,7 +2484,7 @@ function renderTop5() {
 function renderWeekly() {
   const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
   const today = new Date();
-  const dow = today.getDay(); // 0=Sun
+  const dow = today.getDay();
   const mondayOffset = dow === 0 ? -6 : 1 - dow;
   const monday = new Date(today);
   monday.setDate(today.getDate() + mondayOffset);
@@ -1686,18 +2492,39 @@ function renderWeekly() {
   const dayData = Array.from({length:7}, (_,i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const dateStr = d.toISOString().slice(0,10);
+    const dateStr = msToLocalDate(d.getTime());
     const dayTrades = trades.filter(t => t.time && t.time.startsWith(dateStr));
-    if(!dayTrades.length) return {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0, isToday: dateStr === today.toISOString().slice(0,10)};
-    const pnl = dayTrades.reduce((s,t)=>s+t.pnl,0);
+    if(!dayTrades.length) return {pnl:null, trades:0, winRate:0, long:0, short:0, vol:0, fee:0, isToday: dateStr === msToLocalDate(Date.now())};
+    const pnl  = dayTrades.reduce((s,t)=>s+t.pnl,0);
     const wins = dayTrades.filter(t=>t.pnl>0).length;
     const winRate = Math.round((wins/dayTrades.length)*100);
-    const long = dayTrades.filter(t=>t.dir==='Long').length;
+    const long  = dayTrades.filter(t=>t.dir==='Long').length;
     const short = dayTrades.filter(t=>t.dir==='Short').length;
-    const vol = dayTrades.reduce((s,t)=>s+t.vol,0);
-    const fee = dayTrades.reduce((s,t)=>s+t.fee+(t.funding||0),0);
-    return {pnl, trades:dayTrades.length, winRate, long, short, vol, fee, isToday: dateStr === today.toISOString().slice(0,10)};
+    const vol   = dayTrades.reduce((s,t)=>s+t.vol,0);
+    const fee   = dayTrades.reduce((s,t)=>s+(t.fee||0)+(t.funding||0),0);
+    return {pnl, trades:dayTrades.length, winRate, long, short, vol, fee, isToday: dateStr === msToLocalDate(Date.now())};
   });
+
+  // ── Real weekly summary ───────────────────────────────────────────────
+  const weekTrades = dayData.filter(d => d.pnl !== null);
+  const wkPnl   = weekTrades.reduce((s,d)=>s+d.pnl, 0);
+  const wkVol   = weekTrades.reduce((s,d)=>s+d.vol, 0);
+  const wkFee   = weekTrades.reduce((s,d)=>s+d.fee, 0);
+  const wkCount = weekTrades.reduce((s,d)=>s+d.trades, 0);
+  const wkWins  = weekTrades.reduce((s,d)=>s+Math.round(d.winRate/100*d.trades), 0);
+  const wkWr    = wkCount > 0 ? (wkWins/wkCount*100).toFixed(1) : null;
+  const equity  = apiKeys.length && apiKeys[0].balance ? apiKeys[0].balance.totalEquity : null;
+  const wkPct   = equity && equity > 0 ? (wkPnl/equity*100).toFixed(2) : null;
+
+  const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  const pnlEl = document.getElementById('wkPnl');
+  if(pnlEl) { pnlEl.textContent = (wkPnl>=0?'+':'')+'$'+Math.abs(wkPnl).toFixed(2); pnlEl.style.color = wkPnl>=0?'var(--green)':'var(--red)'; }
+  const pctEl = document.getElementById('wkPct');
+  if(pctEl) { pctEl.textContent = wkPct ? (wkPnl>=0?'+':'')+wkPct+'%' : '—'; pctEl.style.color = wkPnl>=0?'var(--green)':'var(--red)'; }
+  set('wkWr',  wkWr ? wkWr+'%' : '—');
+  set('wkVol', wkVol>=1000 ? '$'+(wkVol/1000).toFixed(1)+'K' : '$'+wkVol.toFixed(0));
+  const feeEl = document.getElementById('wkFee');
+  if(feeEl) { feeEl.textContent = wkFee>0 ? '-$'+wkFee.toFixed(2) : '$0.00'; }
 
   document.getElementById('weekGrid').innerHTML = days.map((d,i) => {
     const dd = dayData[i];
@@ -1716,7 +2543,7 @@ function renderWeekly() {
           Сделок: ${dd.trades}<br>
           Long/Short: ${dd.long}/${dd.short}<br>
           Оборот: $${(dd.vol/1000).toFixed(1)}K<br>
-          Комм: -$${dd.fee.toFixed(1)}
+          Комм: -$${dd.fee.toFixed(2)}
         </div>
       </div>`;
   }).join('');
@@ -1850,7 +2677,8 @@ let pendingBybitKey = null;
 async function bybitConnectStep2() {
   const key    = document.getElementById('bb-key').value.trim();
   const secret = document.getElementById('bb-secret').value.trim();
-  const name   = document.getElementById('bb-name').value.trim() || 'Bybit Demo';
+  const name   = document.getElementById('bb-name').value.trim();
+  if (!name)           { alert('Введите название счёта'); document.getElementById('bb-name').focus(); return; }
   if (!key || !secret) { alert('Введите API Key и Secret'); return; }
 
   // Switch to step 2
@@ -1876,6 +2704,14 @@ async function bybitConnectStep2() {
       setConnStatus('loading', '⏳', 'Прокси не найден, пробую напрямую...', 'Подключение к <code style="font-family:var(--mono);color:var(--accent)">api-demo.bybit.com</code>');
     }
 
+    // Синхронизируем время с сервером Bybit перед подключением
+    setConnStatus('loading', '⏳', 'Синхронизирую время с сервером...', '');
+    _bybitTimeSynced = false;
+    await syncBybitTime();
+    if (_bybitTimeSynced && Math.abs(_bybitTimeDelta) > 500) {
+      setConnStatus('loading', '⏳', 'Время скорректировано...', `Поправка часов: <code style="font-family:var(--mono);color:var(--accent)">${_bybitTimeDelta > 0 ? '+' : ''}${_bybitTimeDelta} мс</code>`);
+    }
+
     const bal = await fetchBybitDemoBalance(key, secret);
     document.getElementById('conn-equity').textContent  = '$' + bal.totalEquity.toFixed(2);
     document.getElementById('conn-balance').textContent = '$' + bal.totalBalance.toFixed(2);
@@ -1890,7 +2726,11 @@ async function bybitConnectStep2() {
 
     // Fetch trades
     try {
-      const fetched = await fetchBybitDemoTrades(key, secret);
+      setConnStatus('loading', '⏳', 'Загружаю все сделки...', 'Постранично загружаю историю, подождите...');
+      const fetched = await fetchBybitDemoTrades(key, secret, count => {
+        document.getElementById('conn-trade-count').textContent = count;
+        document.getElementById('connTradeBlock').style.display = '';
+      });
       if (fetched.length > 0) {
         fetched.forEach(t => t.apiKeyRef = key.slice(0,8));
         trades.unshift(...fetched);
@@ -1898,7 +2738,7 @@ async function bybitConnectStep2() {
         document.getElementById('conn-trade-count').textContent = fetched.length;
         document.getElementById('connTradeBlock').style.display = '';
       }
-    } catch(e2) { /* trade fetch optional */ }
+    } catch(e2) { console.warn('Trade fetch error:', e2); }
 
     pendingBybitKey.active = true;
     pendingBybitKey.balance = bal;
@@ -1926,107 +2766,99 @@ function setConnStatus(type, icon, title, msg) {
 }
 
 function downloadProxy() {
-  const code = `/**
- * Bybit Demo Trading — локальный CORS-прокси
- * ============================================
- * Запуск:  node proxy.js
- * Порт:    9001  (http://localhost:9001)
- *
- * Требования: Node.js 18+  (без доп. зависимостей)
- *
- * Как работает:
- *   Браузер -> http://localhost:9001/bybit/* -> https://api-demo.bybit.com/*
- *
- * HMAC-подпись формируется в браузере — прокси только пересылает
- * заголовки. Секрет никогда не покидает ваш браузер.
- */
+  var proxyCode = fs_readSync(); // generated inline below
 
-const http  = require('http');
-const https = require('https');
-const url   = require('url');
+  // start_proxy.bat — opens browser automatically
+  var batCode = [
+    '@echo off',
+    'chcp 65001 >nul',
+    'title Bybit Demo Proxy',
+    'echo.',
+    'echo  Bybit Demo Proxy -- Zapusk...',
+    'echo.',
+    'where node >nul 2>&1',
+    'if %errorlevel% neq 0 (',
+    '  echo  [OSHIBKA] Node.js ne naiden!',
+    '  echo  Ustanovite: https://nodejs.org (versiya LTS)',
+    '  pause',
+    '  start https://nodejs.org',
+    '  exit /b 1',
+    ')',
+    'cd /d "%~dp0"',
+    'if not exist "proxy.js" (',
+    '  echo  [OSHIBKA] proxy.js ne naiden ryadom s etim .bat!',
+    '  pause',
+    '  exit /b 1',
+    ')',
+    'echo  Server zapuskaetsya na http://localhost:9001',
+    'echo  Otkryvayu brauzer...',
+    'echo.',
+    'start "" cmd /c "timeout /t 1 >nul && start http://localhost:9001"',
+    'node proxy.js',
+    'echo.',
+    'echo  Server ostanovlen.',
+    'pause',
+  ].join('\r\n');
 
-const PORT        = 9001;
-const TARGET_HOST = 'api-demo.bybit.com';
-
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-BAPI-API-KEY, X-BAPI-TIMESTAMP, X-BAPI-SIGN, X-BAPI-RECV-WINDOW',
-};
-
-const server = http.createServer((req, res) => {
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204, CORS);
-    res.end();
-    return;
+  function dl(content, filename, type) {
+    var blob = new Blob([content], {type: type});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
   }
 
-  if (req.url === '/health' || req.url === '/') {
-    res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', proxy: 'Bybit Demo', port: PORT }));
-    return;
-  }
+  // Generate proxy.js inline (static file server + Bybit proxy)
+  var lines = [
+    'var http=require("http"),https=require("https"),url=require("url"),fs=require("fs"),path=require("path");',
+    'var PORT=9001,HOST="api-demo.bybit.com",DIR=__dirname;',
+    'var CORS={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"Content-Type,X-BAPI-API-KEY,X-BAPI-TIMESTAMP,X-BAPI-SIGN,X-BAPI-RECV-WINDOW"};',
+    'var MIME={".html":"text/html; charset=utf-8",".js":"application/javascript",".css":"text/css",".json":"application/json"};',
+    'function mg(a,b){var r={};for(var k in a)r[k]=a[k];for(var k in b)r[k]=b[k];return r;}',
+    'http.createServer(function(req,res){',
+    '  var p=url.parse(req.url).pathname||"/";',
+    '  if(req.method==="OPTIONS"){res.writeHead(204,CORS);res.end();return;}',
+    '  if(p==="/health"){res.writeHead(200,mg(CORS,{"Content-Type":"application/json"}));res.end(JSON.stringify({status:"ok"}));return;}',
+    '  if(p.indexOf("/bybit/")===0){',
+    '    var tp=p.replace("/bybit","")+(url.parse(req.url).search||"");',
+    '    var al=["x-bapi-api-key","x-bapi-timestamp","x-bapi-sign","x-bapi-recv-window","content-type"];',
+    '    var fwd={host:HOST};',
+    '    for(var h in req.headers){if(al.indexOf(h.toLowerCase())!==-1)fwd[h]=req.headers[h];}',
+    '    var pr=https.request({hostname:HOST,port:443,path:tp,method:req.method,headers:fwd},function(pres){',
+    '      res.writeHead(pres.statusCode,mg(CORS,{"Content-Type":"application/json"}));pres.pipe(res);',
+    '    });',
+    '    pr.on("error",function(e){res.writeHead(502,mg(CORS,{"Content-Type":"application/json"}));res.end(JSON.stringify({error:e.message}));});',
+    '    req.pipe(pr);return;',
+    '  }',
+    '  var fp=(p==="/"||p==="/index.html")?path.join(DIR,"index.html"):path.join(DIR,p);',
+    '  if(fp.indexOf(DIR)!==0){res.writeHead(403);res.end("Forbidden");return;}',
+    '  fs.readFile(fp,function(err,data){',
+    '    if(err){res.writeHead(404);res.end("Not found");return;}',
+    '    var mime=MIME[path.extname(fp).toLowerCase()]||"application/octet-stream";',
+    '    res.writeHead(200,{"Content-Type":mime});res.end(data);',
+    '  });',
+    '}).listen(PORT,"127.0.0.1",function(){',
+    '  console.log("");',
+    '  console.log("  Bybit Demo Proxy -- http://localhost:"+PORT);',
+    '  console.log("  Otkrojte v brauzere: http://localhost:"+PORT);',
+    '  console.log("  Dlya ostanovki: Ctrl+C");',
+    '  console.log("");',
+    '});',
+  ];
 
-  if (!req.url.startsWith('/bybit/')) {
-    res.writeHead(404, { ...CORS, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Use /bybit/<path> to proxy to api-demo.bybit.com' }));
-    return;
-  }
+  dl(lines.join('\n'), 'proxy.js', 'text/javascript');
+  setTimeout(function() { dl(batCode, 'start_proxy.bat', 'text/plain'); }, 300);
 
-  const parsedUrl  = url.parse(req.url);
-  const targetPath = parsedUrl.pathname.replace('/bybit', '') + (parsedUrl.search || '');
-
-  const fwd = {};
-  ['x-bapi-api-key','x-bapi-timestamp','x-bapi-sign','x-bapi-recv-window','content-type']
-    .forEach(h => { if (req.headers[h]) fwd[h] = req.headers[h]; });
-  fwd['host'] = TARGET_HOST;
-
-  const proxyReq = https.request(
-    { hostname: TARGET_HOST, port: 443, path: targetPath, method: req.method, headers: fwd },
-    (proxyRes) => {
-      res.writeHead(proxyRes.statusCode, { ...CORS, 'Content-Type': 'application/json' });
-      proxyRes.pipe(res);
-    }
-  );
-
-  proxyReq.on('error', (err) => {
-    console.error('[proxy] Upstream error:', err.message);
-    res.writeHead(502, { ...CORS, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: err.message }));
-  });
-
-  req.pipe(proxyReq);
-});
-
-server.listen(PORT, '127.0.0.1', () => {
-  console.log('');
-  console.log('  ╔══════════════════════════════════════════════╗');
-  console.log('  ║   Bybit Demo CORS Proxy — запущен!           ║');
-  console.log(\`  ║   Адрес:  http://localhost:\${PORT}              ║\`);
-  console.log('  ║   Цель:   https://api-demo.bybit.com         ║');
-  console.log('  ║                                              ║');
-  console.log('  ║   Откройте index.html и подключите аккаунт.  ║');
-  console.log('  ║   Для остановки: Ctrl+C                      ║');
-  console.log('  ╚══════════════════════════════════════════════╝');
-  console.log('');
-});
-
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(\`\\n  ❌ Порт \${PORT} уже занят. Прокси уже запущен или смените PORT.\\n\`);
-  } else {
-    console.error('Server error:', err);
-  }
-  process.exit(1);
-});
-`;
-  const blob = new Blob([code], { type: 'text/javascript' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'proxy.js';
-  a.click();
-  URL.revokeObjectURL(a.href);
+  var btn = event.currentTarget;
+  if(btn) { btn.textContent = '✓ Файлы скачаны!'; setTimeout(function(){btn.innerHTML='&#8595; Скачать proxy.js + start_proxy.bat';}, 2500); }
 }
+
+// placeholder — not used, proxy code generated inline above
+function fs_readSync() { return ''; }
+
 
 function openBybitModal() {
   document.getElementById('addBybitModal').classList.add('open');
@@ -2079,7 +2911,10 @@ async function corsRetry() {
     document.getElementById('connBalanceBlock').style.display = '';
     setConnStatus('success', '✅', 'Подключение успешно!', 'Баланс Demo аккаунта получен.');
     try {
-      const fetched = await fetchBybitDemoTrades(pendingBybitKey.key, pendingBybitKey.secret);
+      const fetched = await fetchBybitDemoTrades(pendingBybitKey.key, pendingBybitKey.secret, count => {
+        document.getElementById('conn-trade-count').textContent = count;
+        document.getElementById('connTradeBlock').style.display = '';
+      });
       if(fetched.length > 0) {
         fetched.forEach(t => t.apiKeyRef = pendingBybitKey.key.slice(0,8));
         trades.unshift(...fetched);
@@ -2214,9 +3049,10 @@ async function refreshBybitKey(idx) {
     k.balance = bal;
     k.active = true;
     k.corsBlocked = false;
-    const fetched = await fetchBybitDemoTrades(k.key, k.secret);
+    const fetched = await fetchBybitDemoTrades(k.key, k.secret, count => {
+      btn.innerHTML = `⟳ Загружено ${count}...`;
+    });
     if (fetched.length > 0) {
-      // Tag each trade with this key ref
       fetched.forEach(t => t.apiKeyRef = k.key.slice(0,8));
       trades = trades.filter(t => !(t.source === 'bybit-demo' && t.apiKeyRef === k.key.slice(0,8)));
       trades.unshift(...fetched);
@@ -2254,7 +3090,9 @@ async function syncAllKeys() {
     try {
       const bal = await fetchBybitDemoBalance(k.key, k.secret);
       k.balance = bal; k.active = true; k.corsBlocked = false;
-      const fetched = await fetchBybitDemoTrades(k.key, k.secret);
+      const fetched = await fetchBybitDemoTrades(k.key, k.secret, count => {
+        if(btn) btn.innerHTML = `⟳ Загружено ${count}...`;
+      });
       fetched.forEach(t => t.apiKeyRef = k.key.slice(0,8));
       trades = trades.filter(t => !(t.source === 'bybit-demo' && t.apiKeyRef === k.key.slice(0,8)));
       trades.unshift(...fetched);
@@ -2270,7 +3108,7 @@ async function syncAllKeys() {
   updateBasisSelects();
   const now = new Date().toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
   const lbl = document.getElementById('lastSyncLabel');
-  if(lbl) lbl.textContent = `Обновлено ${now}`;
+  if(lbl) lbl.textContent = `Обновлено ${now} · ${total} сделок`;
   if(btn) { btn.innerHTML = '⟳ Синхронизировать'; btn.disabled = false; }
 }
 
@@ -2319,33 +3157,17 @@ function toggleFav(id, el) {
   renderTrades();
 }
 
-function toggleFavFilter(el) {
-  filterFav = !filterFav;
-  el.classList.toggle('active', filterFav);
-  renderTrades();
-}
-
-function toggleDirFilter(el, dir) {
-  if(filterDir === dir) { filterDir = null; el.classList.remove('active'); }
-  else {
-    filterDir = dir;
-    document.querySelectorAll('#longFilter,#shortFilter').forEach(e=>e.classList.remove('active'));
-    el.classList.add('active');
-  }
-  renderTrades();
-}
-
 // ===================== PERIOD FILTER =====================
 let filterPeriod = 'week';
 
 function getDateRange(period) {
   const now = new Date();
-  const today = now.toISOString().slice(0,10);
+  const today = msToLocalDate(now.getTime());
   if(period === 'today') return { from: today, to: today };
   if(period === 'week') {
     const d = new Date(now);
     d.setDate(d.getDate() - ((d.getDay()+6)%7)); // Monday
-    return { from: d.toISOString().slice(0,10), to: today };
+    return { from: msToLocalDate(d.getTime()), to: today };
   }
   if(period === 'month') {
     return { from: today.slice(0,7)+'-01', to: today };
@@ -2363,37 +3185,81 @@ function filterByPeriod(val) {
   const cdr = document.getElementById('customDateRange');
   if(cdr) cdr.style.display = val === 'custom' ? 'flex' : 'none';
   renderTrades();
+  renderSummary();
 }
 
-function filterBySymbol(val) { filterSymbol = val; renderTrades(); }
-function filterByBasis(val)  { filterBasis  = val; renderTrades(); }
+function filterBySymbol(val) { filterSymbol = val; renderTrades(); renderSummary(); }
+function filterByBasis(val)  { filterBasis  = val; renderTrades(); renderSummary(); }
+
+function toggleFavFilter(el) {
+  filterFav = !filterFav;
+  el.classList.toggle('active', filterFav);
+  renderTrades();
+  renderSummary();
+}
+
+function toggleDirFilter(el, dir) {
+  if(filterDir === dir) { filterDir = null; el.classList.remove('active'); }
+  else {
+    filterDir = dir;
+    document.querySelectorAll('#longFilter,#shortFilter').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');
+  }
+  renderTrades();
+  renderSummary();
+}
 
 function applyPeriodFilter(data) {
   if(!filterPeriod || filterPeriod === 'all') return data;
   const { from, to } = getDateRange(filterPeriod);
+  if(!from && !to) return data;
   return data.filter(t => {
-    const d = t.time ? t.time.slice(0,10) : '';
+    // Основной источник даты — t.time (строка "YYYY-MM-DD HH:MM")
+    // Запасной — exitTs в миллисекундах
+    let d = t.time ? t.time.slice(0,10) : '';
+    if(!d && t.exitTs) d = msToLocalDate(t.exitTs);
+    if(!d) return true; // нет даты — не фильтруем
     return (!from || d >= from) && (!to || d <= to);
   });
 }
 
 // ===================== DASHBOARD PNL (DYNAMIC) =====================
 function renderDashboardPnl(period) {
-  const { from, to } = getDateRange(period || 'week');
+  // Используем собственный диапазон дат для аналитики (не зависит от фильтра раздела Трейды)
+  const today = msToLocalDate(Date.now());
+  let from = '', to = today;
+  if(period === 'today') { from = today; }
+  else if(period === 'week') {
+    const d = new Date(); d.setDate(d.getDate() - ((d.getDay()+6)%7));
+    from = msToLocalDate(d.getTime());
+  }
+  else if(period === 'month') { from = today.slice(0,7)+'-01'; }
+  // 'all' → from='', to='' → все трейды
+
   const subset = trades.filter(t => {
-    const d = t.time ? t.time.slice(0,10) : '';
+    let d = t.time ? t.time.slice(0,10) : '';
+    if(!d && t.exitTs) d = msToLocalDate(t.exitTs);
+    if(!d) return true;
     return (!from || d >= from) && (!to || d <= to);
   });
-  const pnl    = subset.reduce((s,t)=>s+t.pnl,0);
-  const fees   = subset.reduce((s,t)=>s+t.fee+(t.funding||0),0);
-  const vol    = subset.reduce((s,t)=>s+t.vol,0);
+
+  const pnl    = subset.reduce((s,t)=>s+t.pnl, 0);
+  const fees   = subset.reduce((s,t)=>s+(t.fee||0)+(t.funding||0), 0);
+  const vol    = subset.reduce((s,t)=>s+(t.vol||0), 0);
   const wins   = subset.filter(t=>t.pnl>0).length;
   const wr     = subset.length ? ((wins/subset.length)*100).toFixed(1) : '—';
 
   const el = document.getElementById('dashPnl');
   if(el) {
-    el.className = 'pnl-main ' + (pnl>=0?'pos':'neg');
-    el.textContent = (pnl>=0?'+':'') + '$' + Math.abs(pnl).toFixed(2);
+    if(!subset.length) {
+      el.className = 'pnl-main';
+      el.style.color = 'var(--text3)';
+      el.textContent = '$0.00';
+    } else {
+      el.className = 'pnl-main ' + (pnl >= 0 ? 'pos' : 'neg');
+      el.style.color = '';
+      el.textContent = (pnl >= 0 ? '+' : '') + '$' + Math.abs(pnl).toFixed(2);
+    }
   }
   const set = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
   set('dashWr',    subset.length ? wr+'%' : '—');
@@ -2401,7 +3267,7 @@ function renderDashboardPnl(period) {
   set('dashFee',   fees ? '-$'+fees.toFixed(2) : '—');
   set('dashCount', subset.length);
 
-  // Dynamic tip card
+  // Dynamic tip card — берём все трейды для подсказки, не только за период
   if(trades.length > 0) {
     const bySymbol = {};
     trades.forEach(t => {
@@ -2508,98 +3374,434 @@ function doExportCSV() {
 
 // ===================== TRADINGVIEW CHART MODAL =====================
 // ===================== TRADINGVIEW CHART MODAL =====================
-let tvWidget = null;
+let tvChart = null, tvCandleSeries = null, tvResizeObs = null;
 let currentChartTrade = null;
+let currentPositionData = null;   // { pos, posOrders } — set when viewing open position
 let currentInterval = '30';
 
-// Map our symbol to TradingView/Bybit format
-function toTvSymbol(symbol) {
-  // BTCUSDT → BYBIT:BTCUSDT.P (perpetual)
-  const base = symbol.replace('USDT','').replace('PERP','');
-  return `BYBIT:${base}USDT.P`;
+function toBybitInterval(iv) {
+  return String(iv); // Bybit uses: 1,3,5,15,30,60,120,240,360,720,D,W,M
+}
+
+// ===================== PNL CHART MODAL =====================
+let pnlChartInst = null;
+let pnlPeriod    = 'month';
+
+function openPnlChart() {
+  document.getElementById('pnlChartModal').classList.add('open');
+  // Set default active button
+  document.querySelectorAll('.pnl-period-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.pnl-period-btn[onclick*="month"]').classList.add('active');
+  pnlPeriod = 'month';
+  document.getElementById('pnlCustomRange').style.display = 'none';
+  renderPnlChart();
+}
+
+function closePnlChart() {
+  document.getElementById('pnlChartModal').classList.remove('open');
+  if(pnlChartInst) { pnlChartInst.destroy(); pnlChartInst = null; }
+}
+
+function setPnlPeriod(period, btn) {
+  pnlPeriod = period;
+  document.querySelectorAll('.pnl-period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const cr = document.getElementById('pnlCustomRange');
+  cr.style.display = period === 'custom' ? 'flex' : 'none';
+  if(period !== 'custom') renderPnlChart();
+}
+
+function getPnlDateRange() {
+  const today = msToLocalDate(Date.now());
+  if(pnlPeriod === 'today')  return { from: today, to: today };
+  if(pnlPeriod === 'week') {
+    const d = new Date(); d.setDate(d.getDate() - ((d.getDay()+6)%7));
+    return { from: msToLocalDate(d.getTime()), to: today };
+  }
+  if(pnlPeriod === 'month') return { from: today.slice(0,7)+'-01', to: today };
+  if(pnlPeriod === 'custom') {
+    return {
+      from: document.getElementById('pnlDateFrom').value || '',
+      to:   document.getElementById('pnlDateTo').value   || today,
+    };
+  }
+  return { from: '', to: '' }; // all
+}
+
+function renderPnlChart() {
+  const { from, to } = getPnlDateRange();
+  const subset = trades.filter(t => {
+    const d = t.time ? t.time.slice(0,10) : '';
+    return (!from || d >= from) && (!to || d <= to);
+  }).sort((a,b) => a.time > b.time ? 1 : -1);
+
+  // Aggregate by day
+  const dayMap = {};
+  subset.forEach(t => {
+    const d = t.time.slice(0,10);
+    if(!dayMap[d]) dayMap[d] = 0;
+    dayMap[d] += t.pnl;
+  });
+
+  const days   = Object.keys(dayMap).sort();
+  const values = days.map(d => dayMap[d]);
+
+  // Cumulative
+  let cum = 0;
+  const cumValues = values.map(v => { cum += v; return parseFloat(cum.toFixed(2)); });
+
+  // Stats
+  const total  = cumValues.length ? cumValues[cumValues.length-1] : 0;
+  const wins   = subset.filter(t=>t.pnl>0).length;
+  const wr     = subset.length ? ((wins/subset.length)*100).toFixed(1) : '—';
+  const best   = values.length ? Math.max(...values) : null;
+  const worst  = values.length ? Math.min(...values) : null;
+
+  const set = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+  const fmtPnl = v => (v>=0?'+':'') + '$' + Math.abs(v).toFixed(2);
+  const pnlEl = document.getElementById('pnlStatTotal');
+  if(pnlEl) { pnlEl.textContent = fmtPnl(total); pnlEl.style.color = total>=0 ? 'var(--green)' : 'var(--red)'; }
+  set('pnlStatWr', subset.length ? wr+'%' : '—');
+  const bestEl = document.getElementById('pnlStatBest');
+  if(bestEl) { bestEl.textContent = best!==null ? fmtPnl(best) : '—'; }
+  const worstEl = document.getElementById('pnlStatWorst');
+  if(worstEl) { worstEl.textContent = worst!==null ? fmtPnl(worst) : '—'; }
+
+  // Destroy old chart
+  if(pnlChartInst) { pnlChartInst.destroy(); pnlChartInst = null; }
+
+  const ctx = document.getElementById('pnlChartCanvas');
+  if(!ctx || !days.length) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const finalVal = cumValues.length ? cumValues[cumValues.length-1] : 0;
+  const lineColor = finalVal >= 0 ? '#22d1a0' : '#f7516a';
+  const fillColor = finalVal >= 0 ? 'rgba(34,209,160,0.1)' : 'rgba(247,81,106,0.1)';
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? '#8890ab' : '#5a6280';
+
+  pnlChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets: [
+        {
+          label: 'Накопленный PnL',
+          data: cumValues,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          fill: true,
+          tension: 0.35,
+          pointRadius: days.length > 60 ? 0 : 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: cumValues.map(v => v >= 0 ? '#22d1a0' : '#f7516a'),
+          borderWidth: 2,
+          order: 1,
+        },
+        {
+          label: 'PnL за день',
+          data: values,
+          type: 'bar',
+          backgroundColor: values.map(v => v >= 0 ? 'rgba(34,209,160,0.35)' : 'rgba(247,81,106,0.35)'),
+          borderColor:     values.map(v => v >= 0 ? '#22d1a0' : '#f7516a'),
+          borderWidth: 1,
+          borderRadius: 3,
+          order: 2,
+          yAxisID: 'yBar',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: textColor, font: { family: 'JetBrains Mono', size: 11 }, boxWidth: 12, padding: 16 },
+        },
+        tooltip: {
+          backgroundColor: isDark ? '#1f2640' : '#fff',
+          titleColor: isDark ? '#e8eaf0' : '#1a1e30',
+          bodyColor: textColor,
+          borderColor: isDark ? '#252c44' : '#dde1f0',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const sign = v >= 0 ? '+' : '';
+              return ` ${ctx.dataset.label}: ${sign}$${Math.abs(v).toFixed(2)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 12 },
+        },
+        y: {
+          position: 'left',
+          grid: { color: gridColor },
+          ticks: {
+            color: textColor,
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: v => (v>=0?'+':'') + '$' + v.toFixed(0),
+          },
+        },
+        yBar: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: textColor,
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: v => (v>=0?'+':'') + '$' + v.toFixed(0),
+          },
+        },
+      },
+    },
+  });
 }
 
 function closeChartModal() {
   document.getElementById('chartModal').classList.remove('open');
-  // Don't destroy widget — just hide, reload is slow
+  if(tvResizeObs) { tvResizeObs.disconnect(); tvResizeObs = null; }
+  if(tvChart)     { tvChart.remove(); tvChart = null; tvCandleSeries = null; }
+  currentPositionData = null;
+  // Reset labels to trade-chart defaults
+  const tvEl = document.getElementById('tvExitLabel');       if(tvEl) tvEl.textContent = 'Выход';
+  const ovEl = document.getElementById('overlayExitLabel'); if(ovEl) ovEl.textContent = 'Выход';
+  const tlEl = document.getElementById('infoTimeLabel');    if(tlEl) tlEl.textContent = 'Время сделки:';
+  const flEl = document.getElementById('infoFeeLabel');     if(flEl) flEl.textContent = 'Комиссия:';
+  const blEl = document.getElementById('infoBasisLabel');   if(blEl) blEl.textContent = 'Основание:';
+  const feeEl = document.getElementById('infoFee');         if(feeEl) feeEl.style.color = '#ef5350';
+  const basEl = document.getElementById('infoBasis');       if(basEl) basEl.style.color = '#a78bfa';
 }
 
 function switchInterval(interval, btn) {
   currentInterval = String(interval);
   document.querySelectorAll('#intervalGroup .chart-interval-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if(currentChartTrade) buildTvWidget(currentChartTrade, currentInterval);
+  if(currentChartTrade) {
+    loadChart(currentChartTrade, currentInterval);
+  } else if(currentPositionData) {
+    loadPositionChart(currentPositionData.pos, currentPositionData.posOrders, parseInt(currentInterval) || 30);
+  }
 }
 
-function buildTvWidget(t, interval) {
-  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-  const tvSymbol = toTvSymbol(t.symbol);
-  const container = document.getElementById('tvChartContainer');
-  container.innerHTML = ''; // clear previous
-
-  // Show loading
+async function loadChart(t, interval) {
   const loading = document.getElementById('chartLoading');
+  const overlay = document.getElementById('chartTradeOverlay');
   loading.style.display = 'flex';
-  document.getElementById('chartTradeOverlay').style.display = 'none';
-  document.getElementById('chartLoadingMsg').textContent = `Загружаю ${tvSymbol} · ${interval}m...`;
+  overlay.style.display = 'none';
+  document.getElementById('chartLoadingMsg').textContent = `Загружаю ${t.symbol} · ${interval}m...`;
+
+  if(tvResizeObs) { tvResizeObs.disconnect(); tvResizeObs = null; }
+  if(tvChart)     { tvChart.remove(); tvChart = null; tvCandleSeries = null; }
+
+  const container = document.getElementById('tvChartContainer');
 
   try {
-    tvWidget = new TradingView.widget({
-      autosize        : true,
-      symbol          : tvSymbol,
-      interval        : String(interval),
-      timezone        : 'Etc/UTC',
-      theme           : isDark ? 'dark' : 'light',
-      style           : '1',           // candlesticks
-      locale          : 'ru',
-      toolbar_bg      : isDark ? '#1e222d' : '#f1f3f6',
-      enable_publishing : false,
-      withdateranges  : true,
-      hide_side_toolbar : false,
-      allow_symbol_change : true,
-      save_image      : false,
-      container_id    : 'tvChartContainer',
-      studies         : ['Volume@tv-basicstudies'],
-      overrides: {
-        'mainSeriesProperties.candleStyle.upColor'         : '#26a69a',
-        'mainSeriesProperties.candleStyle.downColor'       : '#ef5350',
-        'mainSeriesProperties.candleStyle.borderUpColor'   : '#26a69a',
-        'mainSeriesProperties.candleStyle.borderDownColor' : '#ef5350',
-        'mainSeriesProperties.candleStyle.wickUpColor'     : '#26a69a',
-        'mainSeriesProperties.candleStyle.wickDownColor'   : '#ef5350',
+    // Resolve exact timestamps in ms (UTC)
+    // t.entryTs / t.exitTs are always UTC ms — use them directly.
+    // t.time is a LOCAL time string (no timezone suffix) — parse as local.
+    const fallbackMs = new Date(t.time.replace(' ', 'T')).getTime(); // local → UTC ms
+    const entryMs = (t.entryTs && t.entryTs > 1e12) ? t.entryTs : fallbackMs;
+    const exitMs  = (t.exitTs  && t.exitTs  > 1e12) ? t.exitTs  : entryMs;
+
+    // Use the interval as passed (auto-selection happens in openChartModal)
+    const autoInterval = parseInt(interval) || 30;
+    const barMs   = autoInterval * 60 * 1000;
+    const startMs = Math.min(entryMs, exitMs) - 50 * barMs;
+    const endMs   = Math.max(entryMs, exitMs) + 30 * barMs;
+
+    const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${t.symbol}&interval=${toBybitInterval(autoInterval)}&start=${startMs}&end=${endMs}&limit=300`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if(json.retCode !== 0) throw new Error(json.retMsg || 'Bybit API error');
+
+    const raw = json.result?.list || [];
+    if(!raw.length) throw new Error('Нет свечей для этого символа / периода');
+
+    const candles = raw.slice().reverse().map(r => ({
+      time : Math.floor(parseInt(r[0]) / 1000),
+      open : parseFloat(r[1]),
+      high : parseFloat(r[2]),
+      low  : parseFloat(r[3]),
+      close: parseFloat(r[4]),
+    }));
+
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+    tvChart = LightweightCharts.createChart(container, {
+      layout: {
+        background : { type: 'solid', color: isDark ? '#131722' : '#ffffff' },
+        textColor  : isDark ? '#b2b5be' : '#131722',
+        fontSize   : 12,
+        fontFamily : "'JetBrains Mono', monospace",
       },
-      loading_screen  : { backgroundColor: isDark ? '#131722' : '#ffffff', foregroundColor: '#2962ff' },
-      onChartReady    : function() {
-        loading.style.display = 'none';
-        document.getElementById('chartTradeOverlay').style.display = 'flex';
+      grid: {
+        vertLines: { color: isDark ? '#1e222d' : '#e1e3ea', style: 0 },
+        horzLines: { color: isDark ? '#1e222d' : '#e1e3ea', style: 0 },
       },
+      crosshair: {
+        mode    : LightweightCharts.CrosshairMode.Normal,
+        vertLine: { color: '#9b9b9b', width: 1, style: 3, labelBackgroundColor: isDark ? '#363a45' : '#9598a1' },
+        horzLine: { color: '#9b9b9b', width: 1, style: 3, labelBackgroundColor: isDark ? '#363a45' : '#9598a1' },
+      },
+      rightPriceScale: {
+        borderColor : isDark ? '#2a2e39' : '#e1e3ea',
+        textColor   : isDark ? '#b2b5be' : '#131722',
+        scaleMargins: { top: 0.14, bottom: 0.14 },
+      },
+      timeScale: {
+        borderColor   : isDark ? '#2a2e39' : '#e1e3ea',
+        timeVisible   : true,
+        secondsVisible: false,
+        rightOffset   : 10,
+        barSpacing    : 8,
+        minBarSpacing : 2,
+      },
+      handleScale : { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true },
     });
-  } catch(e) {
+
+    // Price precision auto-detect for micro-price tokens like PLAYSOUT ($0.055)
+    const priceDec = t.entry < 0.0001 ? 7
+                   : t.entry < 0.001  ? 6
+                   : t.entry < 0.01   ? 5
+                   : t.entry < 0.1    ? 4
+                   : t.entry < 10     ? 3
+                   : t.entry < 1000   ? 2
+                   : 1;
+    const minMove  = parseFloat('0.' + '0'.repeat(priceDec - 1) + '1');
+    const fmt = v => v.toFixed(priceDec);
+
+    tvCandleSeries = tvChart.addCandlestickSeries({
+      upColor        : '#26a69a',
+      downColor      : '#ef5350',
+      borderUpColor  : '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor    : '#26a69a',
+      wickDownColor  : '#ef5350',
+      priceFormat    : { type: 'price', precision: priceDec, minMove },
+    });
+
+    // Shift UTC timestamps to local timezone so chart X-axis matches exchange display.
+    // getTimezoneOffset() returns minutes as negative for UTC+ zones (e.g. UTC+3 → -180).
+    const tzOffsetSec = new Date().getTimezoneOffset() * 60;
+    const localCandles = candles.map(c => ({ ...c, time: c.time - tzOffsetSec }));
+
+    tvCandleSeries.setData(localCandles);
+
+    // ── Horizontal price lines ────────────────────────────────────────────
+    // Entry — green solid line
+    tvCandleSeries.createPriceLine({
+      price: t.entry, color: '#26a69a', lineWidth: 2,
+      lineStyle: LightweightCharts.LineStyle.Solid,
+      axisLabelVisible: true,
+      title: `Вход  ${fmt(t.entry)}`,
+    });
+    // Exit — yellow (profit) or red (loss) solid line
+    const exitLineColor = t.pnl >= 0 ? '#f7c948' : '#ef5350';
+    tvCandleSeries.createPriceLine({
+      price: t.exit, color: exitLineColor, lineWidth: 2,
+      lineStyle: LightweightCharts.LineStyle.Solid,
+      axisLabelVisible: true,
+      title: `Выход  ${fmt(t.exit)}`,
+    });
+
+    // ── Find the candle that CONTAINS each execution timestamp ───────────
+    // candles in localCandles are already shifted by tzOffsetSec.
+    // Convert entryMs/exitMs (UTC ms) to local seconds for matching.
+    const intervalSec  = autoInterval * 60;
+    const entryLocalSec = Math.floor(entryMs / 1000) - tzOffsetSec;
+    const exitLocalSec  = Math.floor(exitMs  / 1000) - tzOffsetSec;
+
+    const findCandle = (targetLocalSec) => {
+      const floorSec = Math.floor(targetLocalSec / intervalSec) * intervalSec;
+      const exact = localCandles.find(c => c.time === floorSec);
+      if(exact) return exact;
+      let best = null;
+      for(let i = localCandles.length - 1; i >= 0; i--) {
+        if(localCandles[i].time <= targetLocalSec) { best = localCandles[i]; break; }
+      }
+      return best || localCandles[0];
+    };
+
+    const entryCandle = findCandle(entryLocalSec);
+    const exitCandle  = findCandle(exitLocalSec);
+
+    // ── TWO arrow markers (times must match localCandles shifted times) ───
+    const markers = [];
+
+    markers.push({
+      time    : entryCandle.time,
+      position: t.dir === 'Long' ? 'belowBar' : 'aboveBar',
+      color   : '#26a69a',
+      shape   : t.dir === 'Long' ? 'arrowUp' : 'arrowDown',
+      text    : (t.dir === 'Long' ? '▲ Вход ' : '▼ Вход ') + fmt(t.entry),
+      size    : 2,
+    });
+
+    markers.push({
+      time    : exitCandle.time,
+      position: t.dir === 'Long' ? 'aboveBar' : 'belowBar',
+      color   : t.pnl >= 0 ? '#f7c948' : '#ef5350',
+      shape   : t.dir === 'Long' ? 'arrowDown' : 'arrowUp',
+      text    : '✕ Выход ' + fmt(t.exit),
+      size    : 2,
+    });
+
+    markers.sort((a, b) => a.time - b.time);
+    if(markers.length === 2 && markers[0].time === markers[1].time) {
+      markers[0].position = 'belowBar';
+      markers[1].position = 'aboveBar';
+    }
+    tvCandleSeries.setMarkers(markers);
+
+    // ── Fit and centre on the trade zone ─────────────────────────────────
+    tvChart.timeScale().fitContent();
+
+    // ── Resize observer ───────────────────────────────────────────────────
+    tvResizeObs = new ResizeObserver(() => {
+      if(tvChart) tvChart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+    });
+    tvResizeObs.observe(container);
+
+    loading.style.display = 'none';
+    overlay.style.display = 'flex';
+
+  } catch(err) {
     loading.innerHTML = `
-      <div style="font-size:24px">⚠️</div>
-      <div style="color:#d1d4dc;font-weight:600">TradingView недоступен</div>
-      <div style="font-size:11px;color:#787b86;margin-top:4px">${e.message}</div>
+      <div style="font-size:28px;margin-bottom:10px">⚠️</div>
+      <div style="color:#d1d4dc;font-weight:600;margin-bottom:6px">Не удалось загрузить свечи</div>
+      <div style="font-size:11px;color:#787b86;margin-bottom:14px">${err.message}</div>
+      <button class="btn" style="font-size:12px" onclick="loadChart(currentChartTrade,currentInterval)">↺ Повторить</button>
     `;
   }
-
-  // Fallback: hide loading after 8 sec regardless
-  setTimeout(() => {
-    if(loading.style.display !== 'none') {
-      loading.style.display = 'none';
-      document.getElementById('chartTradeOverlay').style.display = 'flex';
-    }
-  }, 8000);
 }
 
 async function openChartModal(tradeId) {
   const t = trades.find(x => x.id === tradeId);
   if(!t) return;
-  currentChartTrade = t;
+  currentChartTrade   = t;
+  currentPositionData = null;
+  // Reset labels to trade-chart defaults
+  const tvEl = document.getElementById('tvExitLabel');       if(tvEl) tvEl.textContent = 'Выход';
+  const ovEl = document.getElementById('overlayExitLabel'); if(ovEl) ovEl.textContent = 'Выход';
+  const tlEl = document.getElementById('infoTimeLabel');    if(tlEl) tlEl.textContent = 'Время сделки:';
+  const flEl = document.getElementById('infoFeeLabel');     if(flEl) flEl.textContent = 'Комиссия:';
+  const blEl = document.getElementById('infoBasisLabel');   if(blEl) blEl.textContent = 'Основание:';
+  const feeEl = document.getElementById('infoFee');         if(feeEl) feeEl.style.color = '#ef5350';
+  const basEl = document.getElementById('infoBasis');       if(basEl) basEl.style.color = '#a78bfa';
 
   const coin = getCoin(t.symbol);
   const ck   = getCoinKey(t.symbol);
 
-  // --- Populate topbar ---
+  // --- Topbar ---
   const icon = document.getElementById('chartCoinIcon');
   icon.textContent = coin.icon;
   icon.style.background = coin.color;
@@ -2609,18 +3811,18 @@ async function openChartModal(tradeId) {
   dirBadge.className = 'chart-dir-badge ' + (t.dir === 'Long' ? 'long' : 'short');
   dirBadge.textContent = (t.dir === 'Long' ? '▲' : '▼') + ' ' + t.dir;
 
-  // Entry / Exit / PnL in topbar
-  document.getElementById('tvEntryVal').textContent = '$' + t.entry.toLocaleString('ru', {minimumFractionDigits:2, maximumFractionDigits:4});
-  document.getElementById('tvExitVal').textContent  = '$' + t.exit.toLocaleString('ru',  {minimumFractionDigits:2, maximumFractionDigits:4});
+  document.getElementById('tvEntryVal').textContent = '$' + t.entry.toLocaleString('ru',{minimumFractionDigits:2,maximumFractionDigits:4});
+  document.getElementById('tvExitVal').textContent  = '$' + t.exit.toLocaleString('ru', {minimumFractionDigits:2,maximumFractionDigits:4});
   const pnlEl = document.getElementById('tvPnlVal');
   pnlEl.textContent = (t.pnl>=0?'+':'') + '$' + Math.abs(t.pnl).toFixed(2);
   pnlEl.style.color = t.pnl>=0 ? '#26a69a' : '#ef5350';
 
-  // --- Populate overlay badges ---
-  document.getElementById('overlayEntry').textContent = '$' + t.entry.toLocaleString('ru', {minimumFractionDigits:2, maximumFractionDigits:4});
-  document.getElementById('overlayExit').textContent  = '$' + t.exit.toLocaleString('ru',  {minimumFractionDigits:2, maximumFractionDigits:4});
-  document.getElementById('overlayPnl').textContent   = (t.pnl>=0?'+':'') + '$' + Math.abs(t.pnl).toFixed(2) + '  (' + (t.pnlPct>=0?'+':'') + t.pnlPct.toFixed(2) + '%)';
-  document.getElementById('overlayPnl').style.color   = t.pnl>=0 ? '#26a69a' : '#ef5350';
+  // --- Overlay ---
+  document.getElementById('overlayEntry').textContent = '$' + t.entry.toLocaleString('ru',{minimumFractionDigits:2,maximumFractionDigits:4});
+  document.getElementById('overlayExit').textContent  = '$' + t.exit.toLocaleString('ru', {minimumFractionDigits:2,maximumFractionDigits:4});
+  const opnl = (t.pnl>=0?'+':'') + '$' + Math.abs(t.pnl).toFixed(2) + '  (' + (t.pnlPct>=0?'+':'') + t.pnlPct.toFixed(2) + '%)';
+  document.getElementById('overlayPnl').textContent = opnl;
+  document.getElementById('overlayPnl').style.color = t.pnl>=0 ? '#26a69a' : '#ef5350';
   document.getElementById('overlayPnlDot').style.background = t.pnl>=0 ? '#26a69a' : '#ef5350';
 
   // --- Bottom bar ---
@@ -2630,17 +3832,31 @@ async function openChartModal(tradeId) {
   document.getElementById('infoFee').textContent    = '-$' + (t.fee||0).toFixed(2);
   document.getElementById('infoBasis').textContent  = t.basis || '—';
 
-  // Reset interval buttons to 30m
-  currentInterval = '30';
+  // Calculate best interval to show both entry and exit within 300 candles
+  const fallbackMs2 = new Date(t.time.replace(' ', 'T')).getTime();
+  const entryMs2 = (t.entryTs && t.entryTs > 1e12) ? t.entryTs : fallbackMs2;
+  const exitMs2  = (t.exitTs  && t.exitTs  > 1e12) ? t.exitTs  : entryMs2;
+  const tradeDurMs = Math.abs(exitMs2 - entryMs2);
+  const STANDARD_IV = [1, 3, 5, 15, 30, 60, 120, 240, 720];
+  const neededMin = tradeDurMs > 0 ? Math.ceil((tradeDurMs / 60000) / 200) : 0;
+  const bestInterval = STANDARD_IV.find(iv => iv >= neededMin) || 30;
+  currentInterval = String(bestInterval);
+
+  // Update interval buttons
   document.querySelectorAll('#intervalGroup .chart-interval-btn').forEach(b => {
-    b.classList.toggle('active', b.textContent === '30m');
+    const iv = b.textContent.includes('D') ? 1440 : parseInt(b.textContent) || 0;
+    b.classList.toggle('active', iv === bestInterval);
   });
 
   // Show modal
   document.getElementById('chartModal').classList.add('open');
 
-  // Build TradingView widget
-  buildTvWidget(t, '30');
+  // Restore loading state
+  document.getElementById('chartLoading').innerHTML = `<div class="chart-spinner"></div><div style="color:#d1d4dc;font-weight:600">Загружаю график...</div><div style="font-size:11px;color:#787b86" id="chartLoadingMsg">Подключаюсь к Bybit...</div>`;
+  document.getElementById('chartLoading').style.display = 'flex';
+  document.getElementById('chartTradeOverlay').style.display = 'none';
+
+  await loadChart(t, bestInterval);
 }
 
 function sortTable(field) {
@@ -2664,22 +3880,598 @@ function showPage(page) {
   if(page === 'profile') { renderApiKeys(); renderBasisList(); }
 }
 
+// ===================== ORDERS =====================
+let _orders      = [];
+let orderFilter  = 'all';
+
+function classifyOrder(o) {
+  const sot = (o.stopOrderType || '').toLowerCase();
+  if(sot.includes('takeprofit'))  return 'tp';
+  if(sot.includes('stoploss'))    return 'sl';
+  if(sot.includes('trailing'))    return 'trigger';
+  if(sot && sot !== '')           return 'trigger';   // other conditional types
+  // Regular order: reduceOnly=true → closing (could be limit TP), false → entry
+  if(o.reduceOnly === true || o.reduceOnly === 'true') return 'tp'; // limit close = likely TP
+  return 'entry';
+}
+
+function orderTypeLabel(o) {
+  const cls = classifyOrder(o);
+  const labels = { entry:'🟢 Вход', tp:'🎯 Take Profit', sl:'🛑 Stop Loss', trigger:'⚡ Триггер' };
+  const classes = { entry:'o-entry', tp:'o-tp', sl:'o-sl', trigger:'o-trigger' };
+  return { label: labels[cls], cls: classes[cls], type: cls };
+}
+
+async function fetchOrders() {
+  const body = document.getElementById('ordersBody');
+  if(!body) return;
+  if(!apiKeys.length || !apiKeys[0].secret) {
+    body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔑</div><div class="empty-text">Подключите API-ключ</div></div>';
+    return;
+  }
+  body.innerHTML = '<div class="empty-state" style="padding:40px"><div style="font-size:22px">⏳</div><div class="empty-text">Загружаю ордера...</div></div>';
+
+  const k      = apiKeys[0];
+  const secret = k.secret || sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
+  if(!secret) { body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">🔑</div><div class="empty-text">Секрет API не найден</div></div>'; return; }
+
+  try {
+    // Fetch both regular open orders and conditional/stop orders
+    const [res1, res2] = await Promise.all([
+      bybitDemoGet('/v5/order/realtime',  { category:'linear', settleCoin:'USDT', limit:'50' }, k.key, secret),
+      bybitDemoGet('/v5/order/realtime',  { category:'linear', settleCoin:'USDT', limit:'50', orderFilter:'StopOrder' }, k.key, secret),
+    ]);
+
+    const orders1 = res1.retCode === 0 ? (res1.result?.list || []) : [];
+    const orders2 = res2.retCode === 0 ? (res2.result?.list || []) : [];
+
+    // Deduplicate by orderId
+    const seen = new Set();
+    _orders = [...orders1, ...orders2].filter(o => {
+      if(seen.has(o.orderId)) return false;
+      seen.add(o.orderId);
+      return true;
+    });
+
+    const now = new Date().toLocaleTimeString('ru', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const lbl = document.getElementById('orderLastUpdate');
+    if(lbl) lbl.textContent = `Обновлено ${now} · ${_orders.length} ордеров`;
+
+    renderOrders();
+  } catch(e) {
+    body.innerHTML = `<div class="empty-state" style="padding:40px"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function setOrderFilter(type, btn) {
+  orderFilter = type;
+  document.querySelectorAll('#tab-orders .jf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderOrders();
+}
+
+function renderOrders() {
+  const body = document.getElementById('ordersBody');
+  if(!body) return;
+
+  if(!_orders.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">✅</div><div class="empty-text">Активных ордеров нет</div></div>';
+    return;
+  }
+
+  const search = (document.getElementById('orderSearch')?.value || '').toLowerCase().trim();
+
+  const filtered = _orders.filter(o => {
+    const { type } = orderTypeLabel(o);
+    if(orderFilter !== 'all' && type !== orderFilter) return false;
+    if(search && !(o.symbol||'').toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  if(!filtered.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">🔍</div><div class="empty-text">Нет ордеров по фильтру</div></div>';
+    return;
+  }
+
+  const pFmt = v => {
+    const n = parseFloat(v) || 0;
+    return n === 0 ? '—' : n < 0.001 ? n.toFixed(7) : n < 0.1 ? n.toFixed(5) : n < 1 ? n.toFixed(4) : n.toFixed(2);
+  };
+
+  body.innerHTML = filtered.map(o => {
+    const ck   = getCoinKey(o.symbol);
+    const coin = getCoin(o.symbol);
+    const { label, cls } = orderTypeLabel(o);
+    const isLong = o.side === 'Buy';
+    const qty    = parseFloat(o.qty || o.orderQty || 0);
+    const price  = parseFloat(o.price) || 0;
+    const trig   = parseFloat(o.triggerPrice || o.stopPrice) || 0;
+    const vol    = price > 0 && qty > 0 ? price * qty : (trig > 0 && qty > 0 ? trig * qty : 0);
+
+    // Status badge
+    const orderStatus = o.orderStatus || '';
+    let statusBadge = '';
+    if(orderStatus === 'New' || orderStatus === 'Active')
+      statusBadge = '<span class="o-status o-status-new">Активен</span>';
+    else if(orderStatus === 'PartiallyFilled')
+      statusBadge = '<span class="o-status o-status-partial">Частично</span>';
+    else if(orderStatus === 'Untriggered')
+      statusBadge = '<span class="o-status o-status-untrig">Ожидает</span>';
+    else
+      statusBadge = `<span class="o-status" style="color:var(--text3)">${orderStatus}</span>`;
+
+    // Time
+    const createdMs = parseInt(o.createdTime) || 0;
+    const createdMs2 = createdMs > 1e12 ? createdMs : createdMs * 1000;
+    const createdStr = createdMs2 ? msToLocalStr(createdMs2) : '—';
+
+    // Filled progress
+    const cumExecQty = parseFloat(o.cumExecQty) || 0;
+    const fillStr = cumExecQty > 0 ? `<div style="font-size:10px;color:var(--text3)">${cumExecQty}/${qty}</div>` : '';
+
+    return `<div class="order-row">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div class="coin-icon" style="background:${coin.color};width:24px;height:24px;font-size:10px;flex-shrink:0">${coin.icon}</div>
+        <div>
+          <div style="font-weight:700;font-size:12px">${ck}</div>
+          <div style="font-size:10px;color:var(--text3)">USDT</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">${o.orderType || '—'}</div>
+      <div><span class="badge ${isLong?'long':'short'}">${isLong?'▲ Buy':'▼ Sell'}</span></div>
+      <div><span class="o-badge ${cls}">${label}</span></div>
+      <div style="font-family:var(--mono);font-size:11px">${price > 0 ? '$'+pFmt(price) : '—'}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent)">${trig > 0 ? '$'+pFmt(trig) : '—'}</div>
+      <div style="font-family:var(--mono);font-size:11px">${qty > 0 ? qty.toLocaleString('en') : '—'}${fillStr}</div>
+      <div style="font-family:var(--mono);font-size:11px">${vol > 0 ? '$'+(vol>=1000?(vol/1000).toFixed(1)+'K':vol.toFixed(2)) : '—'}</div>
+      <div>${statusBadge}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${createdStr}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== JOURNAL =====================
+let journalFilter = 'all';
+
+function setJournalFilter(type, btn) {
+  journalFilter = type;
+  document.querySelectorAll('.jf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderJournal();
+}
+
+function buildJournalEvents() {
+  // Collect closing orderIds from trades list for classification
+  const closingOidSet = new Set(trades.map(t => t.orderId).filter(Boolean));
+
+  const events = [];
+
+  // 1. Walk all executions from _execBySymbol
+  for(const sym in _execBySymbol) {
+    (_execBySymbol[sym] || []).forEach(ex => {
+      const isClosing = closingOidSet.has(ex.orderId);
+      const isTrade   = true; // _execBySymbol only has Trade type (Funding filtered in fetch)
+
+      // Determine direction from trades list (side in exec = Buy/Sell)
+      // For Short position: Buy = closing, Sell = opening
+      // For Long position:  Sell = closing, Buy = opening
+      const type = isClosing ? 'close' : 'open';
+
+      // Find matching trade for PnL on closes
+      const matchTrade = isClosing
+        ? trades.find(t => t.orderId === ex.orderId && t.symbol === sym)
+        : null;
+
+      events.push({
+        execMs  : ex.execMs,
+        time    : ex.time,
+        symbol  : sym,
+        side    : ex.side,       // Buy / Sell
+        orderType: ex.orderType, // Limit / Market
+        price   : ex.price,
+        qty     : ex.qty,
+        value   : ex.value || ex.price * ex.qty,
+        fee     : ex.fee,
+        type,
+        pnl     : matchTrade ? matchTrade.pnl : null,
+      });
+    });
+  }
+
+  // 2. Add Funding events from trades (t.funding field)
+  trades.forEach(t => {
+    if(t.funding && Math.abs(t.funding) > 0) {
+      events.push({
+        execMs   : t.exitTs || 0,
+        time     : t.exitTs ? msToLocalStr(t.exitTs, true) : t.time,
+        symbol   : t.symbol,
+        side     : '—',
+        orderType: '—',
+        price    : null,
+        qty      : null,
+        value    : null,
+        fee      : t.funding,
+        type     : 'fund',
+        pnl      : null,
+      });
+    }
+  });
+
+  // Sort newest first
+  return events.sort((a, b) => b.execMs - a.execMs);
+}
+
+function renderJournal() {
+  const body    = document.getElementById('journalBody');
+  const countEl = document.getElementById('journalCount');
+  if(!body) return;
+
+  const events = buildJournalEvents();
+
+  if(!events.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-icon">📋</div><div class="empty-text">Синхронизируйте данные чтобы увидеть журнал событий</div></div>';
+    if(countEl) countEl.textContent = '';
+    return;
+  }
+
+  const search = (document.getElementById('journalSearch')?.value || '').toLowerCase().trim();
+
+  const filtered = events.filter(e => {
+    if(journalFilter !== 'all' && e.type !== journalFilter) return false;
+    if(search && !e.symbol.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  if(countEl) countEl.textContent = filtered.length + ' событий';
+
+  if(!filtered.length) {
+    body.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">🔍</div><div class="empty-text">Нет событий по фильтру</div></div>';
+    return;
+  }
+
+  body.innerHTML = filtered.map(e => {
+    const ck   = getCoinKey(e.symbol);
+    const coin = getCoin(e.symbol);
+
+    // Event badge
+    let badge = '';
+    if(e.type === 'open') {
+      const dir = e.side === 'Sell' ? 'Short' : 'Long';
+      badge = `<span class="j-badge j-open">▶ Открыть ${dir}</span>`;
+    } else if(e.type === 'close') {
+      const dir = e.side === 'Buy' ? 'Short' : 'Long';
+      badge = `<span class="j-badge j-close">■ Закрыть ${dir}</span>`;
+    } else {
+      const isNeg = e.fee < 0;
+      badge = `<span class="j-badge ${isNeg ? 'j-fund-neg' : 'j-fund'}">💸 Фандинг</span>`;
+    }
+
+    // Price display
+    const pFmt = v => !v ? '—' : v < 0.001 ? v.toFixed(6) : v < 0.1 ? v.toFixed(5) : v < 1 ? v.toFixed(4) : v.toFixed(2);
+    const priceStr = e.price ? ('$' + pFmt(e.price)) : (e.fee ? (e.fee >= 0 ? '' : '') + e.fee.toFixed(6) + ' USDT' : '—');
+    const qtyStr   = e.qty   ? e.qty.toLocaleString('en') + ' ' + ck : '—';
+    const valStr   = e.value ? '$' + (e.value >= 1000 ? (e.value/1000).toFixed(2)+'K' : e.value.toFixed(2)) : '—';
+    const feeStr   = e.fee   ? `-$${Math.abs(e.fee).toFixed(4)}` : '—';
+    const pnlStr   = e.pnl !== null ? `<span style="color:${e.pnl>=0?'var(--green)':'var(--red)'};font-family:var(--mono)">${e.pnl>=0?'+':''}$${e.pnl.toFixed(2)}</span>` : '—';
+
+    const orderTypeBadge = e.orderType && e.orderType !== '—'
+      ? `<span style="font-size:9px;color:var(--text3);margin-left:4px">${e.orderType}</span>` : '';
+
+    return `<div class="journal-row">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text3)">${e.time || '—'}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="coin-icon" style="background:${coin.color};width:22px;height:22px;font-size:10px;flex-shrink:0">${coin.icon}</div>
+        <div style="font-weight:700;font-size:12px">${ck}</div>
+      </div>
+      <div>${badge}${orderTypeBadge}</div>
+      <div style="font-family:var(--mono);font-size:11px">${priceStr}</div>
+      <div style="font-family:var(--mono);font-size:11px">${qtyStr}</div>
+      <div style="font-family:var(--mono);font-size:11px">${valStr}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--red)">${feeStr}</div>
+      <div style="font-family:var(--mono);font-size:11px">${pnlStr}</div>
+    </div>`;
+  }).join('');
+}
+
 function showDiaryTab(tab, btn) {
-  ['trades','deals','transactions'].forEach(t => {
+  ['trades','deals','orders','journal','transactions'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if(tab === 'deals') {
+    fetchOpenPositions(); // will call renderSummaryPositions after load
+  } else {
+    renderSummary(); // restore normal summary for all other tabs
+  }
+  if(tab === 'trades')  renderTrades();
+  if(tab === 'orders')  fetchOrders();
+  if(tab === 'journal') renderJournal();
+}
+
+// ===================== SYMBOLS ANALYSIS =====================
+function renderSymbols(sortBy = 'pnl', btn) {
+  if(btn) {
+    document.querySelectorAll('#atab-symbols .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const el = document.getElementById('symbolsTable');
+  if(!el) return;
+  if(!trades.length) { el.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">📊</div><div class="empty-text">Нет данных</div></div>'; return; }
+
+  // Aggregate by symbol
+  const map = {};
+  trades.forEach(t => {
+    if(!map[t.symbol]) map[t.symbol] = { pnl:0, count:0, wins:0, vol:0, fee:0 };
+    const s = map[t.symbol];
+    s.pnl   += t.pnl;
+    s.count += 1;
+    s.wins  += t.pnl > 0 ? 1 : 0;
+    s.vol   += t.vol || 0;
+    s.fee   += (t.fee || 0) + (t.funding || 0);
+  });
+
+  let rows = Object.entries(map).map(([sym, s]) => ({
+    sym, ...s,
+    wr    : s.count > 0 ? s.wins / s.count * 100 : 0,
+    avgPnl: s.count > 0 ? s.pnl / s.count : 0,
+  }));
+
+  if(sortBy === 'pnl')   rows.sort((a,b) => b.pnl - a.pnl);
+  if(sortBy === 'count') rows.sort((a,b) => b.count - a.count);
+  if(sortBy === 'wr')    rows.sort((a,b) => b.wr - a.wr);
+
+  const maxAbsPnl = Math.max(...rows.map(r => Math.abs(r.pnl)), 1);
+
+  const head = `<div class="sym-row" style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;border-radius:8px 8px 0 0;background:var(--bg3)">
+    <div>Символ</div><div>Сделок</div><div>Win Rate</div><div>Итого PnL</div><div>Avg PnL</div><div>Визуализация</div><div>Комиссии</div>
+  </div>`;
+
+  const rowsHtml = rows.map((r, i) => {
+    const coin = getCoin(r.sym);
+    const ck   = getCoinKey(r.sym);
+    const barPct = (Math.abs(r.pnl) / maxAbsPnl * 100).toFixed(1);
+    const barColor = r.pnl >= 0 ? '#22d1a0' : '#f7516a';
+    const rank = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `<div class="sym-row">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="color:var(--text3);font-size:11px;min-width:24px">${rank}</span>
+        <div class="coin-icon" style="background:${coin.color};width:24px;height:24px;font-size:10px;flex-shrink:0">${coin.icon}</div>
+        <div style="font-weight:700">${ck}</div>
+      </div>
+      <div style="font-family:var(--mono)">${r.count}</div>
+      <div style="font-family:var(--mono);color:${r.wr>=50?'var(--green)':'var(--red)'}">${r.wr.toFixed(0)}%</div>
+      <div style="font-family:var(--mono);font-weight:700;color:${r.pnl>=0?'var(--green)':'var(--red)'}">${r.pnl>=0?'+':''}$${r.pnl.toFixed(2)}</div>
+      <div style="font-family:var(--mono);color:${r.avgPnl>=0?'var(--green)':'var(--red)'}">${r.avgPnl>=0?'+':''}$${r.avgPnl.toFixed(2)}</div>
+      <div class="sym-bar-wrap"><div class="sym-bar" style="width:${barPct}%;background:${barColor}"></div></div>
+      <div style="font-family:var(--mono);color:var(--red)">-$${r.fee.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">${head}${rowsHtml}</div>`;
+}
+
+// ===================== HEATMAP =====================
+function renderHeatmap() {
+  const gridEl = document.getElementById('heatmapGrid');
+  const statsEl = document.getElementById('heatmapStats');
+  if(!gridEl) return;
+  if(!trades.length) {
+    gridEl.innerHTML = '<div class="empty-state" style="padding:30px"><div class="empty-icon">🕐</div><div class="empty-text">Нет данных</div></div>';
+    return;
+  }
+
+  const DAY_NAMES = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  // Map: day(0=Mon)→hour→{pnl, count}
+  const data = {};
+  for(let d=0;d<7;d++) { data[d]={}; for(let h=0;h<24;h++) data[d][h]={pnl:0,count:0}; }
+
+  trades.forEach(t => {
+    if(!t.exitTs) return;
+    const date = new Date(t.exitTs);
+    const dow  = (date.getDay() + 6) % 7; // Mon=0
+    const hour = date.getHours();
+    data[dow][hour].pnl   += t.pnl;
+    data[dow][hour].count += 1;
+  });
+
+  // Find max abs avg pnl for color scaling
+  let maxAvg = 0.001;
+  for(let d=0;d<7;d++) for(let h=0;h<24;h++) {
+    const c = data[d][h];
+    if(c.count > 0) maxAvg = Math.max(maxAvg, Math.abs(c.pnl / c.count));
+  }
+
+  // Build grid: rows=days, cols=hours
+  const cellSize = 30;
+  let html = `<div style="display:flex;gap:4px">`;
+  // Left label column
+  html += `<div style="display:flex;flex-direction:column;gap:3px;padding-top:24px">`;
+  DAY_NAMES.forEach(d => html += `<div class="hm-label" style="height:${cellSize}px;display:flex;align-items:center;width:24px">${d}</div>`);
+  html += `</div>`;
+  // Hours columns
+  html += `<div style="overflow-x:auto;flex:1">`;
+  // Hour labels row
+  html += `<div style="display:flex;gap:3px;margin-bottom:3px">`;
+  for(let h=0;h<24;h++) html += `<div class="hm-label" style="width:${cellSize}px">${h}</div>`;
+  html += `</div>`;
+  // Day rows
+  for(let d=0;d<7;d++) {
+    html += `<div style="display:flex;gap:3px;margin-bottom:3px">`;
+    for(let h=0;h<24;h++) {
+      const c = data[d][h];
+      let bg = 'var(--bg3)', textCol = 'transparent';
+      let tip = `${DAY_NAMES[d]} ${h}:00 — нет сделок`;
+      if(c.count > 0) {
+        const avg = c.pnl / c.count;
+        const intensity = Math.min(Math.abs(avg) / maxAvg, 1);
+        const alpha = 0.2 + intensity * 0.75;
+        bg = avg >= 0 ? `rgba(34,209,160,${alpha.toFixed(2)})` : `rgba(247,81,106,${alpha.toFixed(2)})`;
+        textCol = 'rgba(255,255,255,0.7)';
+        tip = `${DAY_NAMES[d]} ${h}:00–${h+1}:00\nСделок: ${c.count}\nPnL: ${avg>=0?'+':''}$${avg.toFixed(2)} (avg)\nИтого: ${c.pnl>=0?'+':''}$${c.pnl.toFixed(2)}`;
+      }
+      html += `<div class="hm-cell" style="width:${cellSize}px;background:${bg};color:${textCol}" title="${tip.replace(/\n/g,'&#10;')}">${c.count > 0 ? c.count : ''}</div>`;
+    }
+    html += `</div>`;
+  }
+  html += `</div></div>`;
+  gridEl.innerHTML = html;
+
+  // Stats: best and worst slots
+  const slots = [];
+  for(let d=0;d<7;d++) for(let h=0;h<24;h++) {
+    const c = data[d][h];
+    if(c.count >= 2) slots.push({ day:d, hour:h, avg: c.pnl/c.count, count:c.count, total:c.pnl });
+  }
+  slots.sort((a,b) => b.avg - a.avg);
+  const best  = slots.slice(0, 3);
+  const worst = slots.slice(-3).reverse();
+
+  if(statsEl) {
+    const fmtSlot = s => `${DAY_NAMES[s.day]} ${s.hour}:00 — avg ${s.avg>=0?'+':''}$${s.avg.toFixed(2)} (${s.count} сд.)`;
+    statsEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Лучшее время</div>
+          ${best.map(s=>`<div class="hm-best" style="margin-bottom:6px">${fmtSlot(s)}</div>`).join('')}
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px">❌ Худшее время</div>
+          ${worst.map(s=>`<div class="hm-worst" style="margin-bottom:6px">${fmtSlot(s)}</div>`).join('')}
+        </div>
+      </div>`;
+  }
+}
+
+// ===================== DRAWDOWN =====================
+let _ddChart = null;
+
+function renderDrawdown() {
+  const canvas = document.getElementById('drawdownCanvas');
+  if(!canvas) return;
+  if(!trades.length) return;
+
+  // Sort trades by close time
+  const sorted = [...trades].filter(t => t.time).sort((a,b) => a.time > b.time ? 1 : -1);
+
+  // Build equity curve (cumulative PnL from 0)
+  const labels = [];
+  const equity = [];
+  const ddAbs  = [];  // drawdown in $ below peak
+  let cum = 0, peak = 0, maxDd = 0, curDd = 0;
+  let maxDdPeak = 0, daysInDd = 0, ddDays = 0;
+
+  sorted.forEach(t => {
+    cum  += t.pnl;
+    peak  = Math.max(peak, cum);
+    const dd = peak - cum;
+    if(dd > maxDd) { maxDd = dd; maxDdPeak = peak; }
+    curDd = dd;
+    ddDays = dd > 0 ? ddDays + 1 : 0;
+    daysInDd = Math.max(daysInDd, ddDays);
+    labels.push(t.time.slice(0,10));
+    equity.push(parseFloat(cum.toFixed(2)));
+    ddAbs.push(-parseFloat(dd.toFixed(2))); // negative so draws below zero
+  });
+
+  // Stats
+  const maxDdPct = maxDdPeak > 0 ? (maxDd / maxDdPeak * 100) : 0;
+  const curDdPct = peak > 0 ? (curDd / peak * 100) : 0;
+
+  const set = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  set('ddMaxVal', maxDd > 0 ? `-$${maxDd.toFixed(2)}` : '$0.00');
+  set('ddMaxPct', maxDd > 0 ? `${maxDdPct.toFixed(1)}% от пика` : '—');
+  const curEl = document.getElementById('ddCurVal');
+  if(curEl) { curEl.textContent = curDd > 0 ? `-$${curDd.toFixed(2)}` : '$0.00'; curEl.style.color = curDd > 0 ? 'var(--red)' : 'var(--green)'; }
+  set('ddCurPct', curDd > 0 ? `${curDdPct.toFixed(1)}% от пика` : 'В пике');
+  set('ddPeakVal', `+$${peak.toFixed(2)}`);
+  set('ddDaysVal', String(daysInDd || 0));
+
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const gridColor  = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+  const textColor  = isDark ? '#8890ab' : '#5a6280';
+
+  if(_ddChart) { _ddChart.destroy(); _ddChart = null; }
+
+  _ddChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Кривая капитала',
+          data: equity,
+          borderColor: '#4f8ef7',
+          backgroundColor: 'rgba(79,142,247,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          yAxisID: 'y',
+          order: 1,
+        },
+        {
+          label: 'Просадка от пика',
+          data: ddAbs,
+          borderColor: '#f7516a',
+          backgroundColor: 'rgba(247,81,106,0.18)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 1.5,
+          yAxisID: 'yDd',
+          order: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:true, position:'top', labels:{ color:textColor, font:{family:'JetBrains Mono',size:11}, boxWidth:12 } },
+        tooltip: {
+          backgroundColor: isDark?'#1f2640':'#fff',
+          titleColor: isDark?'#e8eaf0':'#1a1e30',
+          bodyColor: textColor,
+          borderColor: isDark?'#252c44':'#dde1f0',
+          borderWidth:1, padding:10,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${v>=0?'+':''}$${Math.abs(v).toFixed(2)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { grid:{color:gridColor}, ticks:{color:textColor, font:{family:'JetBrains Mono',size:10}, maxTicksLimit:12} },
+        y: {
+          position:'left', grid:{color:gridColor},
+          ticks:{ color:textColor, font:{family:'JetBrains Mono',size:10}, callback: v=>(v>=0?'+':'')+'$'+v.toFixed(0) },
+        },
+        yDd: {
+          position:'right', grid:{drawOnChartArea:false},
+          ticks:{ color:'#f7516a', font:{family:'JetBrains Mono',size:10}, callback: v=>'$'+Math.abs(v).toFixed(0) },
+        },
+      },
+    },
+  });
 }
 
 function showAnalyticsTab(tab, btn) {
-  ['dashboard','top5','bar','line','dailyloss','weekly'].forEach(t => {
+  ['dashboard','top5','symbols','heatmap','drawdown','bar','line','dailyloss','weekly'].forEach(t => {
     document.getElementById(`atab-${t}`).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('.a-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if(tab === 'bar') renderBarChart();
-  if(tab === 'line') renderLineChart();
+  if(tab === 'symbols')  renderSymbols();
+  if(tab === 'heatmap')  renderHeatmap();
+  if(tab === 'drawdown') renderDrawdown();
+  if(tab === 'bar')      renderBarChart();
+  if(tab === 'line')     renderLineChart();
   if(tab === 'dailyloss') renderDlChart();
 }
 
@@ -2712,13 +4504,54 @@ function setRowHeight(h) {
   document.querySelectorAll('.row-main').forEach(el => el.style.padding = sizes[h]);
 }
 
-function refreshData() {
+async function refreshData() {
   const btn = document.querySelector('[onclick="refreshData()"]');
-  if(btn) { btn.textContent = '⟳ Загрузка...'; btn.disabled = true; }
-  setTimeout(() => {
-    renderSummary(); renderTrades(); renderDeals(); renderTransactions();
-    if(btn) { btn.textContent = '⟳ Обновить'; btn.disabled = false; }
-  }, 300);
+  if(btn) { btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Загрузка...'; btn.disabled = true; }
+
+  // Нет подключённых ключей — просто перерисовываем
+  const activeKeys = apiKeys.filter(k => k.key && k.secret && k.active !== false);
+  if(!activeKeys.length) {
+    renderSummary(); renderTrades(); renderTransactions();
+    if(btn) { btn.innerHTML = '⟳ Обновить'; btn.disabled = false; }
+    return;
+  }
+
+  try {
+    // 1. Синхронизируем время с сервером Bybit
+    _bybitTimeSynced = false;
+    await syncBybitTime();
+
+    // 2. Обновляем баланс и сделки для каждого активного ключа
+    for(const k of activeKeys) {
+      try {
+        // Баланс
+        const bal = await fetchBybitDemoBalance(k.key, k.secret);
+        k.balance = bal;
+
+        // Новые сделки — загружаем заново и мержим
+        const fetched = await fetchBybitDemoTrades(k.key, k.secret, count => {
+          if(btn) btn.innerHTML = `<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> ${count} сделок...`;
+        });
+
+        if(fetched.length > 0) {
+          fetched.forEach(t => t.apiKeyRef = k.key.slice(0,8));
+          // Удаляем старые трейды этого ключа, добавляем свежие
+          trades = trades.filter(t => t.apiKeyRef !== k.key.slice(0,8) && t.source !== 'bybit-demo');
+          trades.unshift(...fetched);
+          trades.forEach(t => { if(t.pnl === undefined) calcPnl(t); });
+        }
+      } catch(e) {
+        console.warn('[refresh] ошибка для ключа', k.name, e.message);
+      }
+    }
+
+    await saveApiKeys();
+  } catch(e) {
+    console.warn('[refresh] общая ошибка:', e.message);
+  }
+
+  renderSummary(); renderTrades(); renderTransactions();
+  if(btn) { btn.innerHTML = '⟳ Обновить'; btn.disabled = false; }
 }
 
 function addManualTrade() {
@@ -2771,19 +4604,323 @@ document.addEventListener('keydown', e => {
   if(e.key === 'Escape') { document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open')); }
 });
 
+// ===================== POSITION CHART =====================
+
+async function openPositionChart(symbol) {
+  const pos = (_openPositions || []).find(p => p.symbol === symbol);
+  if(!pos) return;
+
+  // Gather SL/TP orders for this symbol from already-fetched _orders
+  const posOrders = (_orders || []).filter(o => o.symbol === symbol);
+
+  currentChartTrade   = null;       // not a closed trade
+  currentPositionData = { pos, posOrders };
+
+  const coin   = getCoin(symbol);
+  const ck     = getCoinKey(symbol);
+  const isLong = pos.side === 'Buy';
+  const dir    = isLong ? 'Long' : 'Short';
+  const entry  = parseFloat(pos.avgPrice)      || 0;
+  const markPx = parseFloat(pos.markPrice)     || 0;
+  const upnl   = parseFloat(pos.unrealisedPnl) || 0;
+  const lev    = parseFloat(pos.leverage)      || 1;
+  const val    = parseFloat(pos.positionValue) || 0;
+  const slPx   = parseFloat(pos.stopLoss)      || 0;
+  const tpPx   = parseFloat(pos.takeProfit)    || 0;
+
+  const pFmt = v => v < 0.0001 ? v.toFixed(7) : v < 0.001 ? v.toFixed(6) : v < 0.01 ? v.toFixed(5) : v < 0.1 ? v.toFixed(4) : v < 10 ? v.toFixed(3) : v < 1000 ? v.toFixed(2) : v.toFixed(2);
+
+  // --- Topbar ---
+  const coinIconEl = document.getElementById('chartCoinIcon');
+  coinIconEl.textContent = coin.icon;
+  coinIconEl.style.background = coin.color;
+  document.getElementById('chartSymbolLabel').textContent = ck + 'USDT.P';
+
+  const dirBadge = document.getElementById('chartDirBadgeTop');
+  dirBadge.className = 'chart-dir-badge ' + (isLong ? 'long' : 'short');
+  dirBadge.textContent = (isLong ? '▲' : '▼') + ' ' + dir;
+
+  // Swap "Выход" label → "Mark" in topbar
+  const tvExitLbl = document.getElementById('tvExitLabel');
+  if(tvExitLbl) tvExitLbl.textContent = 'Mark';
+  const ovExitLbl = document.getElementById('overlayExitLabel');
+  if(ovExitLbl) ovExitLbl.textContent = 'Mark';
+
+  document.getElementById('tvEntryVal').textContent = '$' + pFmt(entry);
+  document.getElementById('tvEntryVal').style.color = '';
+
+  const tvExitEl = document.getElementById('tvExitVal');
+  tvExitEl.textContent = '$' + pFmt(markPx);
+  tvExitEl.style.color = markPx > entry ? (isLong ? '#26a69a' : '#ef5350')
+                       : markPx < entry ? (isLong ? '#ef5350' : '#26a69a') : '#d1d4dc';
+
+  const pnlEl = document.getElementById('tvPnlVal');
+  pnlEl.textContent = (upnl >= 0 ? '+' : '') + '$' + Math.abs(upnl).toFixed(2);
+  pnlEl.style.color = upnl >= 0 ? '#26a69a' : '#ef5350';
+
+  // --- Overlay ---
+  document.getElementById('overlayEntry').textContent = '$' + pFmt(entry);
+  document.getElementById('overlayExit').textContent  = '$' + pFmt(markPx);
+  const upnlPct = val > 0 ? (upnl / val * 100) : 0;
+  const overlayPnlEl = document.getElementById('overlayPnl');
+  overlayPnlEl.textContent = (upnl >= 0 ? '+' : '') + '$' + Math.abs(upnl).toFixed(2)
+                           + '  (' + (upnlPct >= 0 ? '+' : '') + upnlPct.toFixed(2) + '%)';
+  overlayPnlEl.style.color = upnl >= 0 ? '#26a69a' : '#ef5350';
+  document.getElementById('overlayPnlDot').style.background = upnl >= 0 ? '#26a69a' : '#ef5350';
+
+  // --- Bottom bar labels ---
+  const tlEl = document.getElementById('infoTimeLabel');   if(tlEl) tlEl.textContent  = 'Открыта:';
+  const flEl = document.getElementById('infoFeeLabel');    if(flEl) flEl.textContent  = 'Плечо:';
+  const blEl = document.getElementById('infoBasisLabel');  if(blEl) blEl.textContent  = 'SL / TP:';
+
+  document.getElementById('infoSymbol').textContent = ck + 'USDT';
+  const createdRaw = parseInt(pos.createdTime) || 0;
+  const createdMs  = createdRaw > 1e12 ? createdRaw : createdRaw * 1000;
+  document.getElementById('infoTime').textContent = createdMs ? msToLocalStr(createdMs) : '—';
+
+  document.getElementById('infoVol').textContent = '$' + (val >= 1000 ? (val/1000).toFixed(2)+'K' : val.toFixed(2));
+
+  const feeInfoEl = document.getElementById('infoFee');
+  feeInfoEl.textContent  = lev + '×';
+  feeInfoEl.style.color  = '#d1d4dc';
+
+  let slTpStr = '';
+  if(slPx > 0) slTpStr += 'SL $' + pFmt(slPx);
+  if(tpPx > 0) slTpStr += (slTpStr ? '  ·  ' : '') + 'TP $' + pFmt(tpPx);
+  if(!slTpStr && posOrders.length > 0) {
+    const slOrd = posOrders.find(o => classifyOrder(o) === 'sl');
+    const tpOrd = posOrders.find(o => classifyOrder(o) === 'tp');
+    const slP = slOrd ? (parseFloat(slOrd.triggerPrice || slOrd.price) || 0) : 0;
+    const tpP = tpOrd ? (parseFloat(tpOrd.triggerPrice || tpOrd.price) || 0) : 0;
+    if(slP) slTpStr += 'SL $' + pFmt(slP);
+    if(tpP) slTpStr += (slTpStr ? '  ·  ' : '') + 'TP $' + pFmt(tpP);
+  }
+  const basisInfoEl = document.getElementById('infoBasis');
+  basisInfoEl.textContent = slTpStr || '—';
+  basisInfoEl.style.color = '#d1d4dc';
+
+  // Default 30m, highlight button
+  currentInterval = '30';
+  document.querySelectorAll('#intervalGroup .chart-interval-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === '30m');
+  });
+
+  // Show modal
+  document.getElementById('chartModal').classList.add('open');
+  document.getElementById('chartLoading').innerHTML = '<div class="chart-spinner"></div><div style="color:#d1d4dc;font-weight:600">Загружаю график...</div><div style="font-size:11px;color:#787b86" id="chartLoadingMsg">Подключаюсь к Bybit...</div>';
+  document.getElementById('chartLoading').style.display  = 'flex';
+  document.getElementById('chartTradeOverlay').style.display = 'none';
+
+  await loadPositionChart(pos, posOrders, 30);
+}
+
+async function loadPositionChart(pos, posOrders, interval) {
+  const loading   = document.getElementById('chartLoading');
+  const overlay   = document.getElementById('chartTradeOverlay');
+  loading.style.display  = 'flex';
+  overlay.style.display  = 'none';
+
+  const sym     = pos.symbol;
+  const isLong  = pos.side === 'Buy';
+  const entry   = parseFloat(pos.avgPrice)  || 0;
+  const markPx  = parseFloat(pos.markPrice) || 0;
+
+  // SL / TP: prefer position fields, then fall back to orders
+  let slPrice = parseFloat(pos.stopLoss)   || 0;
+  let tpPrice = parseFloat(pos.takeProfit) || 0;
+
+  const slOrders = (posOrders || []).filter(o => classifyOrder(o) === 'sl');
+  const tpOrders = (posOrders || []).filter(o => classifyOrder(o) === 'tp');
+
+  // Resolve TP prices from orders (supports multiple TPs)
+  const tpPricesFromOrders = tpOrders
+    .map(o => parseFloat(o.triggerPrice || o.price) || 0)
+    .filter(p => p > 0);
+
+  const slPriceFromOrder = slOrders.length > 0
+    ? (parseFloat(slOrders[0].triggerPrice || slOrders[0].stopPrice || slOrders[0].price) || 0)
+    : 0;
+  const slPriceResolved = slPriceFromOrder || slPrice;
+
+  if(tvResizeObs) { tvResizeObs.disconnect(); tvResizeObs = null; }
+  if(tvChart)     { tvChart.remove(); tvChart = null; tvCandleSeries = null; }
+
+  const container = document.getElementById('tvChartContainer');
+  const ivStr     = String(interval);
+
+  try {
+    const createdRaw = parseInt(pos.createdTime) || 0;
+    const entryMs    = createdRaw > 1e12 ? createdRaw : (createdRaw > 0 ? createdRaw * 1000 : 0);
+
+    const barMs   = interval * 60 * 1000;
+    const nowMs   = Date.now();
+    // Show from position open (minus 10 bars) to now + 5 bars; cap history at 150 bars back
+    const startMs = entryMs > 0
+                  ? Math.min(entryMs - 10 * barMs, nowMs - 150 * barMs)
+                  : nowMs - 150 * barMs;
+    const endMs   = nowMs + 5 * barMs;
+
+    document.getElementById('chartLoadingMsg').textContent = `Загружаю ${sym} · ${ivStr}m...`;
+
+    const url  = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${sym}&interval=${ivStr}&start=${startMs}&end=${endMs}&limit=300`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if(json.retCode !== 0) throw new Error(json.retMsg || 'Bybit API error');
+
+    const raw = json.result?.list || [];
+    if(!raw.length) throw new Error('Нет свечей для этого символа');
+
+    const candles = raw.slice().reverse().map(r => ({
+      time : Math.floor(parseInt(r[0]) / 1000),
+      open : parseFloat(r[1]),
+      high : parseFloat(r[2]),
+      low  : parseFloat(r[3]),
+      close: parseFloat(r[4]),
+    }));
+
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+    tvChart = LightweightCharts.createChart(container, {
+      layout: {
+        background: { type: 'solid', color: isDark ? '#131722' : '#ffffff' },
+        textColor : isDark ? '#b2b5be' : '#131722',
+        fontSize  : 12,
+        fontFamily: "'JetBrains Mono', monospace",
+      },
+      grid: {
+        vertLines: { color: isDark ? '#1e222d' : '#e1e3ea' },
+        horzLines: { color: isDark ? '#1e222d' : '#e1e3ea' },
+      },
+      crosshair: {
+        mode    : LightweightCharts.CrosshairMode.Normal,
+        vertLine: { color: '#9b9b9b', width: 1, style: 3, labelBackgroundColor: isDark ? '#363a45' : '#9598a1' },
+        horzLine: { color: '#9b9b9b', width: 1, style: 3, labelBackgroundColor: isDark ? '#363a45' : '#9598a1' },
+      },
+      rightPriceScale: {
+        borderColor : isDark ? '#2a2e39' : '#e1e3ea',
+        textColor   : isDark ? '#b2b5be' : '#131722',
+        scaleMargins: { top: 0.14, bottom: 0.14 },
+      },
+      timeScale: {
+        borderColor   : isDark ? '#2a2e39' : '#e1e3ea',
+        timeVisible   : true,
+        secondsVisible: false,
+        rightOffset   : 12,
+        barSpacing    : 8,
+        minBarSpacing : 2,
+      },
+      handleScale : { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true },
+    });
+
+    // Auto price precision
+    const priceDec = entry < 0.0001 ? 7 : entry < 0.001 ? 6 : entry < 0.01 ? 5 : entry < 0.1 ? 4 : entry < 10 ? 3 : entry < 1000 ? 2 : 1;
+    const minMove  = parseFloat('0.' + '0'.repeat(priceDec - 1) + '1');
+    const fmt      = v => v.toFixed(priceDec);
+
+    tvCandleSeries = tvChart.addCandlestickSeries({
+      upColor        : '#26a69a',
+      downColor      : '#ef5350',
+      borderUpColor  : '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor    : '#26a69a',
+      wickDownColor  : '#ef5350',
+      priceFormat    : { type: 'price', precision: priceDec, minMove },
+    });
+
+    // Shift UTC → local timezone so X-axis matches exchange display
+    const tzOffsetSec  = new Date().getTimezoneOffset() * 60;
+    const localCandles = candles.map(c => ({ ...c, time: c.time - tzOffsetSec }));
+    tvCandleSeries.setData(localCandles);
+
+    // ── Entry line — green solid ────────────────────────────────────────────
+    if(entry > 0) {
+      tvCandleSeries.createPriceLine({
+        price: entry, color: '#26a69a', lineWidth: 2,
+        lineStyle: LightweightCharts.LineStyle.Solid,
+        axisLabelVisible: true,
+        title: `Вход  ${fmt(entry)}`,
+      });
+    }
+
+    // ── Stop Loss line — red dashed ─────────────────────────────────────────
+    if(slPriceResolved > 0) {
+      tvCandleSeries.createPriceLine({
+        price: slPriceResolved, color: '#ef5350', lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `SL  ${fmt(slPriceResolved)}`,
+      });
+    }
+
+    // ── Take Profit line(s) — blue dashed ───────────────────────────────────
+    if(tpPricesFromOrders.length > 0) {
+      tpPricesFromOrders.forEach((tpP, i) => {
+        tvCandleSeries.createPriceLine({
+          price: tpP, color: '#4f8ef7', lineWidth: 1,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `TP${tpPricesFromOrders.length > 1 ? (i + 1) : ''}  ${fmt(tpP)}`,
+        });
+      });
+    } else if(tpPrice > 0) {
+      tvCandleSeries.createPriceLine({
+        price: tpPrice, color: '#4f8ef7', lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `TP  ${fmt(tpPrice)}`,
+      });
+    }
+
+    // ── Entry arrow marker ───────────────────────────────────────────────────
+    if(entryMs > 0) {
+      const entryLocalSec = Math.floor(entryMs / 1000) - tzOffsetSec;
+      const intervalSec   = interval * 60;
+      const floorSec      = Math.floor(entryLocalSec / intervalSec) * intervalSec;
+      const entryCandle   = localCandles.find(c => c.time === floorSec)
+                          || localCandles.reduce((best, c) =>
+                              c.time <= entryLocalSec && (!best || c.time > best.time) ? c : best, null)
+                          || localCandles[0];
+      if(entryCandle) {
+        tvCandleSeries.setMarkers([{
+          time    : entryCandle.time,
+          position: isLong ? 'belowBar' : 'aboveBar',
+          color   : '#26a69a',
+          shape   : isLong ? 'arrowUp' : 'arrowDown',
+          text    : (isLong ? '▲ ' : '▼ ') + 'Открытие  ' + fmt(entry),
+          size    : 2,
+        }]);
+      }
+    }
+
+    tvChart.timeScale().fitContent();
+
+    tvResizeObs = new ResizeObserver(() => {
+      if(tvChart) tvChart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+    });
+    tvResizeObs.observe(container);
+
+    loading.style.display = 'none';
+    overlay.style.display = 'flex';
+
+  } catch(err) {
+    loading.innerHTML = `
+      <div style="font-size:28px;margin-bottom:10px">⚠️</div>
+      <div style="color:#d1d4dc;font-weight:600;margin-bottom:6px">Не удалось загрузить свечи</div>
+      <div style="font-size:11px;color:#787b86;margin-bottom:14px">${err.message}</div>
+      <button class="btn" style="font-size:12px" onclick="loadPositionChart(currentPositionData.pos, currentPositionData.posOrders, ${interval})">↺ Повторить</button>
+    `;
+  }
+}
+
 // ===================== INIT =====================
 trades.forEach(calcPnl);
 renderSummary();
 renderTrades();
-renderDeals();
+
 renderTransactions();
 updateBasisSelects();
-renderApiKeys();
-// Auto-refresh API keys that have secrets in sessionStorage
-apiKeys.forEach((k, idx) => {
-  const sess = sessionStorage.getItem('bb_secret_' + k.key.slice(0,8));
-  if(sess) { k.secret = sess; }
-});
+// renderApiKeys() and secret restore are handled inside loadApiKeys().then()
 </script>
 </body>
 </html>
