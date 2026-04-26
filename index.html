@@ -497,7 +497,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
   /* Главный контейнер занимает всю ширину */
   #app { flex-direction: column; }
-  #main { width: 100vw; padding-bottom: 60px; }
+  #main { width: 100vw; }
+  #content { padding-bottom: 72px; }
 
   /* Topbar: убираем лишнее, оставляем заголовок и кнопки */
   #topbar {
@@ -511,7 +512,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   .topbar-title { font-size: 14px; }
   #diaryTabs { display: none; } /* вкладки переедут вниз */
   .topbar-actions { gap: 6px; }
-  .topbar-actions .btn:not(.primary):not(.theme-btn) { display: none; } /* скрываем экспорт */
+  .topbar-actions .btn:not(.theme-btn) { display: none; } /* скрываем экспорт и Обновить — они в bottom nav */
 
   /* Content */
   #content { padding: 12px; }
@@ -519,14 +520,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   /* Summary cards — 2 в ряд */
   .summary-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; margin-bottom: 12px; }
   .sum-card { padding: 10px 12px; }
-  .sum-val { font-size: 18px !important; }
+  .sum-val { font-size: 15px !important; }
   .sum-label { font-size: 10px; }
   .sum-change { font-size: 10px; }
 
   /* Filters bar — скролл горизонтально */
   .filters-bar { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
   .filters-bar::-webkit-scrollbar { display: none; }
-  .filter-select { font-size: 11px; padding: 5px 22px 5px 8px; flex-shrink: 0; }
+  .filter-select { font-size: 11px; padding: 5px 20px 5px 7px; flex-shrink: 0; max-width: 130px; }
   .filter-tag { flex-shrink: 0; font-size: 11px; padding: 5px 10px; }
 
   /* Trades table — горизонтальный скролл */
@@ -598,7 +599,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     -webkit-tap-highlight-color: transparent;
   }
   .bnav-item.active { color: var(--accent); }
-  .bnav-item .bnav-icon { font-size: 20px; line-height: 1; }
+  .bnav-item .bnav-icon { width: 22px; height: 22px; display: block; flex-shrink: 0; }
 
   /* Mobile diary tabs — горизонтальный скролл под topbar */
   #mobileDiaryTabs {
@@ -696,16 +697,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   <!-- MOBILE BOTTOM NAVIGATION -->
   <nav id="bottomNav">
     <button class="bnav-item active" onclick="mobileNavTo('diary')" id="bnav-diary">
-      <span class="bnav-icon">📋</span>Дневник
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      Дневник
     </button>
     <button class="bnav-item" onclick="mobileNavTo('analytics')" id="bnav-analytics">
-      <span class="bnav-icon">📈</span>Аналитика
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Аналитика
     </button>
     <button class="bnav-item" onclick="refreshData()" id="bnav-refresh">
-      <span class="bnav-icon">⟳</span>Обновить
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Обновить
     </button>
     <button class="bnav-item" onclick="mobileNavTo('profile')" id="bnav-profile">
-      <span class="bnav-icon">👤</span>Профиль
+      <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Профиль
     </button>
   </nav>
 
@@ -4776,6 +4781,9 @@ function setRowHeight(h) {
 async function refreshData() {
   const btn = document.querySelector('[onclick="refreshData()"]');
   if(btn) { btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Загрузка...'; btn.disabled = true; }
+  // Анимируем иконку в bottom nav тоже
+  const bnavRefresh = document.getElementById('bnav-refresh');
+  if(bnavRefresh) { bnavRefresh.style.color = 'var(--accent)'; bnavRefresh.style.opacity = '0.7'; }
 
   // Нет подключённых ключей — просто перерисовываем
   const activeKeys = apiKeys.filter(k => k.key && k.secret && k.active !== false);
@@ -4821,6 +4829,8 @@ async function refreshData() {
 
   renderSummary(); renderTrades(); renderTransactions();
   if(btn) { btn.innerHTML = '⟳ Обновить'; btn.disabled = false; }
+  const bnavRefresh2 = document.getElementById('bnav-refresh');
+  if(bnavRefresh2) { bnavRefresh2.style.color = ''; bnavRefresh2.style.opacity = ''; }
 }
 
 function addManualTrade() {
